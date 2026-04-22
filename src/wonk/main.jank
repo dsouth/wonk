@@ -1,0 +1,23 @@
+(ns wonk.main
+;;  (:require wonk.structs) maybe once StructMap is implmeneted?
+  (:include "extern.hpp" 
+            "wayland-server-core.h"
+))
+
+(defn -main [& args]
+  (cpp/wlr_log_init cpp/WLR_DEBUG cpp/nullptr)
+  (let [display (cpp/box (cpp/wl_display_create))
+        session (cpp/box (#cpp (:* wlr_session)))]
+    (let [wm {:display display
+              :session session
+              :backend (cpp/box (cpp/wlr_backend_autocreate 
+                  (cpp/wl_display_get_event_loop (cpp/unbox (:* wl_display) display))
+;;                                                   (:& (cpp/unbox (:* wlr_session) session)))
+                                                    cpp/nullptr))
+              }]
+        (cpp/wl_display_destroy_clients (cpp/unbox (:* wl_display) (:display wm)))
+        (cpp/wlr_backend_destroy (cpp/unbox (:* wlr_backend) (:backend wm)))
+        (cpp/wl_display_destroy (cpp/unbox (:* wl_display) (:display wm)))
+      )
+  )
+)

@@ -1,0 +1,84 @@
+(ns wonk.structs)
+
+(defstruct window-manager
+  :display
+  :backend
+  :session
+  :renderer
+  :allocator
+  :output-layout
+  :compositor
+  :scene
+  :scene-layout
+  :input-mode
+  :outputs
+  :new-output-listener
+  :xdg-shell
+  :new-xdg-toplevel-listener
+  :new-xdg-popup-listener
+  :toplevels
+  :xdg-surfaces
+  :layer-shell
+  :new-layer-shell-listener
+  :destroy-layer-shell-listener
+  :commit-surface-layer-shell-listener
+  :destroy-surface-layer-shell-listener
+  :cursor
+  :cursor-manager
+  :cursor-motion-listener
+  :cursor-motion-absolute-listener
+  :cursor-button-listener
+  :cursor-axis-listener
+  :cursor-frame-listener
+  :keyboards
+  :new-input-listener
+  :seat
+  :request-set-cursor-listener
+  :focus-change-listener
+  :request-set-selection-listener)
+
+(defstruct keyboard
+  :window-manager
+  :wlr-keyboard
+  :modifier-listener
+  :key-listener
+  :keyboard-destroy-listener)
+
+(defstruct xdg_surface
+  :surface
+  :child
+  :window-manager)
+
+(defstruct output
+  :window-manager
+  :wlr-output
+  :background
+  :focused
+  :desktop
+  :frame-listener
+  :request-state-listener
+  :destroy-listner)
+
+(defstruct layer-shell
+  :window-manager
+  :surface
+  :scene-tree)
+
+(defstruct xdg-toplevel
+  :window-manager
+  :wlr-xdg-toplevel
+  :scene-tree
+  :maximize-listener
+  :fullscreen-listener
+  :move-listener
+  :resize-listener
+  :destory-listener
+  :wlr-surfce-commit-listener
+  :wlr-surface-map-listener
+  :wlr-surface-unmap-listener)
+
+(defstruct desktop
+  :rows)
+
+(defstruct desktop-row 
+  :toplevels)
