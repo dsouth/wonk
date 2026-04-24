@@ -6,6 +6,7 @@ extern "C" {
 
 #include <wlr/backend.h>
 #include <wlr/backend/session.h>
+#include <wlr/render/wlr_renderer.h>
 
 #undef static
 }

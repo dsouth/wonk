@@ -12,7 +12,8 @@
                         "/usr/include/pixman-1/"
                         ]
          :library-dirs ["/usr/lib/"]
-         :linked-libraries ["wlroots-0.20"]}
+         :linked-libraries ["wlroots-0.20",
+                            "wayland-server"]}
 
   :profiles {:base {:jank {:output-dir "target/debug"
                            :optimization-level 0}}

@@ -5,17 +5,19 @@
 ))
 
 (defn -main [& args]
+  (println "running...")
   (cpp/wlr_log_init cpp/WLR_DEBUG cpp/nullptr)
-  (let [display (cpp/box (cpp/wl_display_create))
-        session (cpp/box (#cpp (:* wlr_session)))
-        wm {:display display
-            :session session
-            :backend (cpp/box (cpp/wlr_backend_autocreate 
-                                    (cpp/wl_display_get_event_loop (cpp/unbox (:* wl_display) display))
-                                    (cpp/& (cpp/unbox (:* wlr_session) session))))
-            }]
-      (cpp/wl_display_destroy_clients (cpp/unbox (:* wl_display) (:display wm)))
-      (cpp/wlr_backend_destroy (cpp/unbox (:* wlr_backend) (:backend wm)))
-      (cpp/wl_display_destroy (cpp/unbox (:* wl_display) (:display wm)))
+  (let [display (cpp/wl_display_create)
+        session (#cpp (:* wlr_session))
+        backend (cpp/wlr_backend_autocreate 
+                                    (cpp/wl_display_get_event_loop display)
+                                    (cpp/& session))
+        renderer (cpp/wlr_renderer_autocreate backend)
+        wm {:display (cpp/box display)
+            :session (cpp/box session)
+            :backend (cpp/box backend)
+            :renderer (cpp/box renderer)
+            }
+	]
   )
 )
