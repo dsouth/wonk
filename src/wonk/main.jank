@@ -4,23 +4,72 @@
             "wayland-server-core.h"
 ))
 
-(defn -main [& args]
-  (cpp/wlr_log_init cpp/WLR_DEBUG cpp/nullptr)
+(def wm (atom {}))
+
+(defn init []
   (let [display (cpp/wl_display_create)
         session (#cpp (:* wlr_session))
-        backend (cpp/wlr_backend_autocreate 
-                                    (cpp/wl_display_get_event_loop display)
-                                    (cpp/& session))
-        renderer (cpp/wlr_renderer_autocreate backend)
-        wm {:display (cpp/box display)
-            :session (cpp/box session)
-            :backend (cpp/box backend)
-            :renderer (cpp/box renderer)
-            }
-	]
-    (cpp/wl_display_destroy_clients (cpp/unbox (:* wl_display) (:display wm)))
-    (cpp/wlr_renderer_destroy (cpp/unbox (:* wlr_renderer) (:renderer wm)))
-    (cpp/wlr_backend_destroy (cpp/unbox (:* wlr_backend) (:backend wm)))
-    (cpp/wl_display_destroy (cpp/unbox (:* wl_display) (:display wm)))
+        backend (cpp/wlr_backend_autocreate
+                 (cpp/wl_display_get_event_loop display)
+                 (cpp/& session))
+        ]
+  (if (not (cpp/== cpp/nullptr backend))
+    (let [renderer (cpp/wlr_renderer_autocreate backend)]
+      (if (not (cpp/== cpp/nullptr renderer))
+        (let [allocator (cpp/wlr_allocator_autocreate backend renderer)]
+          (if (not (cpp/== cpp/nullptr allocator))
+            (let [compositor (cpp/wlr_compositor_create display 5 renderer)]
+              (cpp/wlr_subcompositor_create display)
+              (cpp/wlr_data_device_manager_create display)
+              (let [output-layout (cpp/wlr_output_layout_create display)
+                    scene (cpp/wlr_scene_create)
+                    scene-layout (cpp/wlr_scene_attach_output_layout scene output-layout)
+                    xdg-shell (cpp/wlr_xdg_shell_create display 3)
+                    cursor (cpp/wlr_cursor_create)]
+                (cpp/wlr_cursor_attach_output_layout cursor output-layout)
+                (let [cursor-manager (cpp/wlr_xcursor_manager_create cpp/nullptr 24)
+                      seat (cpp/wlr_seat_create display "seat0")]
+                  ;; TODO set up listener callbacks as well
+                  (reset! wm {:display (cpp/box display)
+                              :session (cpp/box session)
+                              :backend (cpp/box backend)
+                              :renderer (cpp/box renderer)
+                              :allocator (cpp/box allocator)
+                              :compositor (cpp/box compositor)
+                              :output-layout (cpp/box output-layout)
+                              :scene (cpp/box scene)
+                              :scene-layout (cpp/box scene-layout)
+                              :xdg-shell (cpp/box xdg-shell)
+                              :cursor (cpp/box cursor)
+                              :cursor-manager (cpp/box cursor-manager)
+                              :seat (cpp/box seat)
+                              :input-mode false
+                              })
+                  true)))
+            (do
+;;              (cpp/wlr_log cpp/WLR_ERROR "failed to autocreate allocator")
+              false)))
+        (do
+;;          (cpp/wlr_log cpp/WLR_ERROR "failed to autocreate renderer")
+          false)))
+    (do
+;;      (cpp/wlr_log cpp/WLR_ERROR "failed to autocreate backend")
+      false))))
+
+(defn cleanup []
+  (cpp/wl_display_destroy_clients (cpp/unbox (:* cpp/wl_display) (:display @wm)))
+  (cpp/wlr_xcursor_manager_destroy (cpp/unbox (:* cpp/wlr_xcursor_manager) (:cursor-manager @wm)))
+  (cpp/wlr_cursor_destroy (cpp/unbox (:* cpp/wlr_cursor) (:cursor @wm)))
+  (cpp/wlr_allocator_destroy (cpp/unbox (:* cpp/wlr_allocator) (:allocator @wm)))
+  (cpp/wlr_renderer_destroy (cpp/unbox (:* cpp/wlr_renderer) (:renderer @wm)))
+  (cpp/wlr_backend_destroy (cpp/unbox (:* cpp/wlr_backend) (:backend @wm)))
+  (cpp/wl_display_destroy (cpp/unbox (:* cpp/wl_display) (:display @wm))))
+
+(defn -main [& args]
+  (cpp/wlr_log_init cpp/WLR_DEBUG cpp/nullptr)
+  (if (init)
+  ;; kick it off here
+    (println "wonk is GO!")
   )
-)
+  (cleanup))
+
