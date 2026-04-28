@@ -1,0 +1,9 @@
+(ns wonk.output
+  (:include "extern.hpp"
+            "callbacks.h")
+  )
+
+(defn output-new-callback []
+  (println "output new called"))
+
+

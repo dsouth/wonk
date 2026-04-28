@@ -1,4 +1,5 @@
 (ns wonk.main
+  (:require [wonk.output :as output])
 ;;  (:require wonk.structs) maybe once StructMap is implmeneted?
   (:include "extern.hpp" 
             "callbacks.h"
@@ -49,7 +50,7 @@
                               :seat (cpp/box seat)
                               :input-mode false
                               })
-                  (cpp/initialize backend)
+                  (cpp/wire_backend_listeners backend)
                   (println "getting socket")
                   ;; TODO set up listener callbacks as well
                   (let [socket (cpp/wl_display_add_socket_auto display)]
@@ -89,7 +90,7 @@
 (defn -main [& args]
 ;;  (callback)
   (println "running")
-;;  (cpp/wlr_log_init cpp/WLR_DEBUG cpp/nullptr)
+  (cpp/wlr_log_init cpp/WLR_DEBUG cpp/nullptr)
 ;;  (cpp/wlr_log cpp/WLR_DEBUG "starting up...")
   (if (init)
   ;; kick it off here
