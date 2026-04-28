@@ -1,10 +1,15 @@
 (ns wonk.main
 ;;  (:require wonk.structs) maybe once StructMap is implmeneted?
   (:include "extern.hpp" 
+            "callbacks.h"
             "wayland-server-core.h"
 ))
 
 (def wm (atom {}))
+
+(defn callback []
+  (println "CALLED BACK!!!")
+  true)
 
 (defn init []
   (let [display (cpp/wl_display_create)
@@ -29,7 +34,6 @@
                 (cpp/wlr_cursor_attach_output_layout cursor output-layout)
                 (let [cursor-manager (cpp/wlr_xcursor_manager_create cpp/nullptr 24)
                       seat (cpp/wlr_seat_create display "seat0")]
-                  ;; TODO set up listener callbacks as well
                   (reset! wm {:display (cpp/box display)
                               :session (cpp/box session)
                               :backend (cpp/box backend)
@@ -45,7 +49,22 @@
                               :seat (cpp/box seat)
                               :input-mode false
                               })
-                  true)))
+                  (cpp/initialize backend)
+                  (println "getting socket")
+                  ;; TODO set up listener callbacks as well
+                  (let [socket (cpp/wl_display_add_socket_auto display)]
+                    (if (not (= socket 0))
+                      (if (not (= (cpp/wlr_backend_start backend)))
+                        (do
+                          (println "backed started")
+;;                          (cpp/setenv "WAYLAND_DISPLAY" socket true)
+                         true)
+                        (do 
+                          ;;could not start backend
+                          false))
+                      (do
+                        ;;could not create wayland socket
+                        false))))))
             (do
 ;;              (cpp/wlr_log cpp/WLR_ERROR "failed to autocreate allocator")
               false)))
@@ -57,19 +76,25 @@
       false))))
 
 (defn cleanup []
+  (cpp/clean_up_listeners)
   (cpp/wl_display_destroy_clients (cpp/unbox (:* cpp/wl_display) (:display @wm)))
   (cpp/wlr_xcursor_manager_destroy (cpp/unbox (:* cpp/wlr_xcursor_manager) (:cursor-manager @wm)))
   (cpp/wlr_cursor_destroy (cpp/unbox (:* cpp/wlr_cursor) (:cursor @wm)))
   (cpp/wlr_allocator_destroy (cpp/unbox (:* cpp/wlr_allocator) (:allocator @wm)))
   (cpp/wlr_renderer_destroy (cpp/unbox (:* cpp/wlr_renderer) (:renderer @wm)))
   (cpp/wlr_backend_destroy (cpp/unbox (:* cpp/wlr_backend) (:backend @wm)))
-  (cpp/wl_display_destroy (cpp/unbox (:* cpp/wl_display) (:display @wm))))
+  (cpp/wl_display_destroy (cpp/unbox (:* cpp/wl_display) (:display @wm)))
+)
 
 (defn -main [& args]
-  (cpp/wlr_log_init cpp/WLR_DEBUG cpp/nullptr)
+;;  (callback)
+  (println "running")
+;;  (cpp/wlr_log_init cpp/WLR_DEBUG cpp/nullptr)
+;;  (cpp/wlr_log cpp/WLR_DEBUG "starting up...")
   (if (init)
   ;; kick it off here
     (println "wonk is GO!")
   )
-  (cleanup))
+  (cleanup)
+ )
 

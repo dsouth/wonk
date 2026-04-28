@@ -14,3 +14,7 @@ pom.xml.asc
 .cpcache/
 src/wonk/target/.jank-binary-version
 src/wonk/target/*
+.jank*
+a.out
+native/.cache/*
+native/*.so

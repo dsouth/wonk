@@ -11,9 +11,11 @@
                         ;; not required for C ???
                         "/usr/include/pixman-1/"
                         ]
-         :library-dirs ["/usr/lib/"]
+         :library-dirs ["/usr/lib/"
+                        "native"]
          :linked-libraries ["wlroots-0.20",
-                            "wayland-server"]}
+                            "wayland-server"
+                            "callbacks"]}
 
   :profiles {:base {:jank {:output-dir "target/debug"
                            :optimization-level 0}}

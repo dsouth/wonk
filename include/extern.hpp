@@ -10,6 +10,7 @@ extern "C" {
 #include <wlr/types/wlr_compositor.h>
 #include <wlr/types/wlr_cursor.h>
 #include <wlr/types/wlr_data_device.h>
+//#include <wlr/types/wlr_layer_shell_v1.h>
 #include <wlr/types/wlr_output_layout.h>
 #include <wlr/types/wlr_scene.h>
 #include <wlr/types/wlr_seat.h>
@@ -19,4 +20,7 @@ extern "C" {
 #include <wlr/util/log.h>
 
 #undef static
+
+#include <stdlib.h>
+#include "callbacks.h"
 }
