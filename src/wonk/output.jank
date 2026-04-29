@@ -1,11 +1,27 @@
 (ns wonk.output
+  (:require [wonk.state :as state])
   (:include "extern.hpp"
             "callbacks.h")
   )
 
-(defn new-callback [output]
+(defn new-callback [o]
   (println "-- output new called")
-  (cpp/wire_output_listeners (cpp/unbox (:* wlr_output) output)))
+  (let [output (cpp/unbox (:* wlr_output) o)]
+    (cpp/wire_output_listeners output)
+    (let [state (#cpp wlr_output_state)]
+      (cpp/wlr_output_init_render 
+        output
+        (cpp/unbox (:* wlr_allocator) (:allocator @state/wm))
+        (cpp/unbox (:* wlr_renderer) (:renderer @state/wm)))
+      (cpp/wlr_output_state_init (cpp/& state))
+      (cpp/wlr_output_state_set_enabled (cpp/& state) true)
+      (let [mode (cpp/wlr_output_preferred_mode output)]
+        (if (not (cpp/== cpp/nullptr mode))
+          (cpp/wlr_output_state_set_mode (cpp/& state) mode)
+          (println "  -- no mode for output")))
+      (cpp/wlr_output_commit_state output (cpp/& state))
+      (cpp/wlr_output_state_finish (cpp/& state))
+      )))
 
 (defn frame-callback []
   (println "-- output frame called"))

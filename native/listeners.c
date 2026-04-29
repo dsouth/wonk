@@ -33,7 +33,6 @@ void eval_callback1(jank_object_ref **ref, const char* name, jank_object_ref arg
 void output_new(struct wl_listener *listener, void *data) {
   struct wlr_output *output = data;
   jank_object_ref box_output = jank_box("wlr_output*", output);
-  // todo pass in output
   eval_callback1(&output_new_callback, "#'wonk.output/new-callback", box_output);
 }
  
