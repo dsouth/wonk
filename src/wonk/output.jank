@@ -20,8 +20,7 @@
           (cpp/wlr_output_state_set_mode (cpp/& state) mode)
           (println "  -- no mode for output")))
       (cpp/wlr_output_commit_state output (cpp/& state))
-      (cpp/wlr_output_state_finish (cpp/& state))
-      )))
+      (cpp/wlr_output_state_finish (cpp/& state)))))
 
 (defn frame-callback []
   (println "-- output frame called"))
