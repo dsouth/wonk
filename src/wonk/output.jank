@@ -3,7 +3,17 @@
             "callbacks.h")
   )
 
-(defn output-new-callback []
-  (println "output new called"))
+(defn new-callback [output]
+  (println "-- output new called")
+  (cpp/wire_output_listeners (cpp/unbox (:* wlr_output) output)))
 
+(defn frame-callback []
+  (println "-- output frame called"))
+
+(defn request-state []
+  (println "-- output request state called"))
+
+(defn destroy-callback []
+  (println "-- output destroy called")
+  (cpp/output_clean_up_listeners))
 
