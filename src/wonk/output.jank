@@ -28,8 +28,12 @@
       (cpp/wlr_scene_output_layout_add_output (cpp/unbox (:* wlr_scene_output_layout) (:scene-layout @state/wm))
                                               layout-output
                                               scene-output))
-    ;; save output (with background scene tree) to state
-    ))
+    (let [output-state {:wlr-reference o
+                        :background (cpp/box background-scene-tree)
+                        :focused false
+                        }
+          outputs (:outputs @state/wm)]
+      (swap! outputs conj output-state))))
     
 (defn new-callback [o]
   (println "-- output new called")
@@ -55,10 +59,15 @@
 (defn request-state []
   (println "-- output request state called"))
 
-(defn destroy-callback []
+(defn destroy-callback [o]
   (println "-- output destroy called")
-  ;; TODO remove reference to wlr_output in @state/wm
-  ;; (:outputs @main/wm) should return a sequence of maps 
-  ;; each representing one of the outputs of the composistor
+  (let [output (cpp/unbox (:* wlr_output) o)]
+    (swap! (:outputs @state/wm)
+           ;; remove any map that contains the wlr_output reference
+           (fn [v]
+             (vec
+               (remove 
+                 (fn [m] (cpp/== output (cpp/unbox (:* wlr_output) (:wlr-reference m))))
+                 v))))) 
   (cpp/output_clean_up_listeners))
 

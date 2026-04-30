@@ -42,7 +42,9 @@ void wire_backend_listeners(struct wlr_backend *backend) {
 }
 
 void output_destroy(struct wl_listener *listener, void *data) {
-  eval_callback(&output_destroy_callback, "#'wonk.output/destroy-callback");
+  struct wlr_output *output = data;;
+  jank_object_ref box_output = jank_box("wlr_output*", output);
+  eval_callback1(&output_destroy_callback, "#'wonk.output/destroy-callback", box_output);
 }
 
 void output_frame(struct wl_listener *listener, void *data) {
