@@ -1,0 +1,17 @@
+(ns wonk.input
+  (:require [wonk.state :as state])
+  (:include "extern.hpp"
+            "callbacks.h"))
+
+(defn new-callback [d]
+  (println "input new callback!!!!")
+  (let [device (cpp/unbox (:* wlr_input_device) d)
+        type (.-type device)
+        ]
+    (cond
+      (= type cpp/WLR_INPUT_DEVICE_KEYBOARD) (do
+                                               (println "-- new KEYBOARD device"))
+      (= type cpp/WLR_INPUT_DEVICE_POINTER) (do
+                                              (println "-- new POINTER device"))
+      (true) (do
+               (println "------- UNKNOWN DEVICE")))))

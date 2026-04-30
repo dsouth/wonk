@@ -2,8 +2,7 @@
   (:require [wonk.state :as state])
   (:include "extern.hpp"
             "globals.h"
-            "callbacks.h")
-  )
+            "callbacks.h"))
 
 (defn initialize-scene [o]
   (let [output (cpp/unbox (:* wlr_output) o)

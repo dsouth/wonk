@@ -7,6 +7,9 @@
 jank_object_ref *output_new_callback = NULL;
 struct wl_listener output_new_listener;
 
+jank_object_ref *input_new_callback = NULL;
+struct wl_listener input_new_listener;
+
 jank_object_ref *output_destroy_callback = NULL;
 struct wl_listener output_destroy_listener;
 
@@ -36,9 +39,17 @@ void output_new(struct wl_listener *listener, void *data) {
   eval_callback1(&output_new_callback, "#'wonk.output/new-callback", box_output);
 }
  
+void input_new(struct wl_listener *listener, void *data) {
+  struct wlr_input_device *device = data;
+  jank_object_ref box_data = jank_box("wlr_input_device*", device);
+  eval_callback1(&input_new_callback, "#'wonk.input/new-callback", box_data);
+}
+ 
 void wire_backend_listeners(struct wlr_backend *backend) {
   output_new_listener.notify = output_new;
   wl_signal_add(&backend->events.new_output, &output_new_listener);
+  input_new_listener.notify = input_new;
+  wl_signal_add(&backend->events.new_input, &input_new_listener);
 }
 
 void output_destroy(struct wl_listener *listener, void *data) {
@@ -56,7 +67,6 @@ void output_request_state(struct wl_listener *listener, void *data) {
 }
 
 void wire_output_listeners(struct wlr_output *output) {
-  printf("  -- wire output listners called --\n");
   output_destroy_listener.notify = output_destroy;
   wl_signal_add(&output->events.destroy, &output_destroy_listener);
   output_frame_listener.notify = output_frame;
@@ -67,6 +77,7 @@ void wire_output_listeners(struct wlr_output *output) {
 
 void clean_up_listeners() {
   wl_list_remove(&output_new_listener.link);
+  wl_list_remove(&input_new_listener.link);
 }
 
 void output_clean_up_listeners() {

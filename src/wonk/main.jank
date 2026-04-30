@@ -1,5 +1,6 @@
 (ns wonk.main
-  (:require [wonk.output :as output])
+  (:require wonk.output)
+  (:require wonk.input)
   (:require [wonk.state :as state])
 ;;  (:require wonk.structs) maybe once StructMap is implmeneted?
   (:include "extern.hpp" 
