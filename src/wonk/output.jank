@@ -1,18 +1,44 @@
 (ns wonk.output
   (:require [wonk.state :as state])
   (:include "extern.hpp"
+            "globals.h"
             "callbacks.h")
   )
 
+(defn initialize-scene [o]
+  (let [output (cpp/unbox (:* wlr_output) o)
+        y 0
+        ;; is there a jank way to compare strings here???
+        x (if (= (.-name output) "HDMI-A-1")
+            1920 0)
+        width (#cpp int)
+        height (#cpp int)
+        background-scene-tree (cpp/wlr_scene_tree_create 
+                                  (cpp/& (.-tree 
+                                            (cpp/unbox (:* wlr_scene) (:scene @state/wm)))))
+        ]
+    (cpp/wlr_output_effective_resolution output (cpp/& width) (cpp/& height))
+    (cpp/wlr_scene_rect_create background-scene-tree width height cpp/black)
+    (cpp/wlr_scene_node_set_position (cpp/& (.-node background-scene-tree)) x y)
+    (let [layout-output (cpp/wlr_output_layout_add (cpp/unbox (:* wlr_output_layout) (:output-layout @state/wm))
+                                                   output x y)
+          scene-output (cpp/wlr_scene_output_create (cpp/unbox (:* wlr_scene) (:scene @state/wm))
+                                                    output)
+          ]
+      (cpp/wlr_scene_output_layout_add_output (cpp/unbox (:* wlr_scene_output_layout) (:scene-layout @state/wm))
+                                              layout-output
+                                              scene-output))
+    ;; save output (with background scene tree) to state
+    ))
+    
 (defn new-callback [o]
   (println "-- output new called")
   (let [output (cpp/unbox (:* wlr_output) o)]
     (cpp/wire_output_listeners output)
     (let [state (#cpp wlr_output_state)]
-      (cpp/wlr_output_init_render 
-        output
-        (cpp/unbox (:* wlr_allocator) (:allocator @state/wm))
-        (cpp/unbox (:* wlr_renderer) (:renderer @state/wm)))
+      (cpp/wlr_output_init_render output
+                                  (cpp/unbox (:* wlr_allocator) (:allocator @state/wm))
+                                  (cpp/unbox (:* wlr_renderer) (:renderer @state/wm)))
       (cpp/wlr_output_state_init (cpp/& state))
       (cpp/wlr_output_state_set_enabled (cpp/& state) true)
       (let [mode (cpp/wlr_output_preferred_mode output)]
@@ -20,7 +46,8 @@
           (cpp/wlr_output_state_set_mode (cpp/& state) mode)
           (println "  -- no mode for output")))
       (cpp/wlr_output_commit_state output (cpp/& state))
-      (cpp/wlr_output_state_finish (cpp/& state)))))
+      (cpp/wlr_output_state_finish (cpp/& state))
+      (initialize-scene o))))
 
 (defn frame-callback []
   (println "-- output frame called"))
@@ -30,5 +57,8 @@
 
 (defn destroy-callback []
   (println "-- output destroy called")
+  ;; TODO remove reference to wlr_output in @state/wm
+  ;; (:outputs @main/wm) should return a sequence of maps 
+  ;; each representing one of the outputs of the composistor
   (cpp/output_clean_up_listeners))
 

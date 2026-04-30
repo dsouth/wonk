@@ -44,6 +44,7 @@
                               :cursor-manager (cpp/box cursor-manager)
                               :seat (cpp/box seat)
                               :input-mode false
+                              :outputs (atom [])
                               })
                   (cpp/wire_backend_listeners backend)
                   (println "getting socket")
