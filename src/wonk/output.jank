@@ -37,7 +37,6 @@
       (swap! outputs conj output-state))))
     
 (defn new-callback [o]
-  (println "-- output new called")
   (let [output (cpp/unbox (:* wlr_output) o)
         listeners (cpp/wire_output_listeners output)]
     (let [state (#cpp wlr_output_state)]
@@ -55,12 +54,10 @@
       (initialize-scene o))
     ;; :outputs should already be populated by the call to 
     ;; (initialize-scene)...
-    (println @(:outputs @state/wm))
     (swap! (:outputs @state/wm) 
            (fn [v]
              ;; didn't seem to need to box here, but doing it all the same...
-             (update v (dec (count v)) assoc :listeners (cpp/box listeners))))
-    (println @(:outputs @state/wm))))
+             (update v (dec (count v)) assoc :listeners (cpp/box listeners))))))
 
 (defn frame-callback []
   (println "-- output frame called"))
@@ -69,13 +66,13 @@
   (println "-- output request state called"))
 
 (defn destroy-callback [o]
-  (println "-- output destroy called")
   (let [output (cpp/unbox (:* wlr_output) o)
         ;; first find the output state to remove the listeners...
-        state (first (filter 
-                     #(cpp/== output (cpp/unbox (:* wlr_output) (:wlr-reference %))) 
-                     @(:outputs @state/wm)))
-                     ]
+        state (first 
+                (filter 
+                  #(cpp/== output (cpp/unbox (:* wlr_output) (:wlr-reference %))) 
+                  @(:outputs @state/wm)))
+        ]
     (cpp/cleanup_listeners (cpp/unbox (:* listeners) (:listeners state)))
         ;; then remove the output state
     (swap! (:outputs @state/wm)
