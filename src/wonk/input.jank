@@ -1,11 +1,9 @@
 (ns wonk.input
   (:require [wonk.state :as state])
   (:include "extern.hpp"
-            "callbacks.h"))
-
-(defn keyboard-destroy [k]
-  (let [keyboard (cpp/unbox (:* wlr_keyboard) k)]
-    (println "destroy keyboard called")))
+            "callbacks.h"
+            "xkbcommon/xkbcommon-keysyms.h"
+            "xkbcommon/xkbcommon.h"))
 
 (defn modifier-press [e]
   (let [event (cpp/unbox (:* wlr_keyboard_key_event) e)]
@@ -16,7 +14,42 @@
     (println "key press!")))
 
 (defn new-keyboard [d]
-  (println "setting up new keyboard"))
+  (let [device (cpp/unbox (:* wlr_input_device) d)
+        wlr_keyboard (cpp/wlr_keyboard_from_input_device device)
+        context (cpp/xkb_context_new cpp/XKB_CONTEXT_NO_FLAGS)
+        keymap (cpp/xkb_keymap_new_from_names 
+                 context cpp/nullptr cpp/XKB_KEYMAP_COMPILE_NO_FLAGS)
+        ]
+    (if (not (cpp/wlr_keyboard_set_keymap wlr_keyboard keymap))
+      ;; should log error here TODO hook up wlr logging
+      (println "FAILED to set keymap"))
+    (cpp/xkb_keymap_unref keymap)
+    (cpp/xkb_context_unref context)
+    (let [rate-hz 25
+          delay-ms 600]
+      (cpp/wlr_keyboard_set_repeat_info wlr_keyboard rate-hz delay-ms))
+    (let [listeners (cpp/wire_keyboard_listeners device wlr_keyboard)]
+      (swap! (:keyboards @state/wm) conj {:wlr-reference (cpp/box wlr_keyboard)
+                                          :listeners (cpp/box listeners)}))
+    (cpp/wlr_seat_set_keyboard (cpp/unbox (:* wlr_seat) (:seat @state/wm))
+                               wlr_keyboard)))
+
+(defn keyboard-destroy [k]
+  (let [keyboard (cpp/unbox (:* wlr_keyboard) k)
+        state (first
+                (filter
+                  #(cpp/== keyboard (cpp/unbox (:* wlr_keyboard) (:wlr-reference %)))
+                  @(:keyboards @state/wm)))
+                  ]
+    (cpp/cleanup_listeners (cpp/unbox (:* listeners) (:listeners state)))
+    (swap! (:keyboards @state/wm)
+           (fn [v]
+             (vec
+               (remove
+                 (fn [m]
+                   #(cpp/== keyboard (cpp/unbox (:* wlr_keyboard) (:wlr-reference m))))
+                 v))))))
+
 
 (defn new-pointer [d]
   (println "setting up new pointer"))
@@ -27,7 +60,7 @@
         type (.-type device)
         ]
     (cond
-      (= type cpp/WLR_INPUT_DEVICE_KEYBOARD) (new-keyboard device)
-      (= type cpp/WLR_INPUT_DEVICE_POINTER)  (new-pointer device)
+      (= type cpp/WLR_INPUT_DEVICE_KEYBOARD) (new-keyboard d)
+      (= type cpp/WLR_INPUT_DEVICE_POINTER)  (new-pointer d)
       (true) (do
                (println "------- UNKNOWN DEVICE")))))

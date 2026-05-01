@@ -47,6 +47,7 @@
                               :seat (cpp/box seat)
                               :input-mode false
                               :outputs (atom [])
+                              :keyboards (atom [])
                               :listeners (cpp/box listeners)
                               })
                   (println "getting socket")
