@@ -35,9 +35,15 @@
       (swap! outputs conj output-state))))
     
 (defn new-callback [o]
+  ;;
+  ;; TODO need to track listeners for each
+  ;; output so that they can be cleaned up
+  ;; correctly instead of just using ONE
+  ;; for everything ... r'oh r'oh
+  ;; same goes for keyboards, etc... :/
   (println "-- output new called")
-  (let [output (cpp/unbox (:* wlr_output) o)]
-    (cpp/wire_output_listeners output)
+  (let [output (cpp/unbox (:* wlr_output) o)
+        listeners (cpp/wire_output_listeners output)]
     (let [state (#cpp wlr_output_state)]
       (cpp/wlr_output_init_render output
                                   (cpp/unbox (:* wlr_allocator) (:allocator @state/wm))
@@ -50,7 +56,17 @@
           (println "  -- no mode for output")))
       (cpp/wlr_output_commit_state output (cpp/& state))
       (cpp/wlr_output_state_finish (cpp/& state))
-      (initialize-scene o))))
+      (initialize-scene o))
+    ;; :outputs should already be populated by the call to 
+    ;; (initialize-scene)...
+    (println @(:outputs @state/wm))
+    ;; TODO THIS SCREWED THE DATA STRUCTURE ?!?!?!?
+    (swap! (:outputs @state/wm) 
+           (fn [v]
+             ;; didn't seem to need to box here, but doing it all the same...
+             (update v (dec (count v)) assoc :listeners (cpp/box listeners))))
+    (println @(:outputs @state/wm))
+    ))
 
 (defn frame-callback []
   (println "-- output frame called"))
@@ -60,13 +76,21 @@
 
 (defn destroy-callback [o]
   (println "-- output destroy called")
-  (let [output (cpp/unbox (:* wlr_output) o)]
+  (let [output (cpp/unbox (:* wlr_output) o)
+        ;; first find the output state to remove the listeners...
+        state (first (filter 
+                     #(cpp/== output (cpp/unbox (:* wlr_output) (:wlr-reference %))) 
+                     @(:outputs @state/wm)))
+                     ]
+    (println "here")
+    (cpp/cleanup_listeners (cpp/unbox (:* listeners) (:listeners state)))
+    (println "there")
+        ;; then remove the output state
     (swap! (:outputs @state/wm)
            ;; remove any map that contains the wlr_output reference
            (fn [v]
              (vec
                (remove 
                  (fn [m] (cpp/== output (cpp/unbox (:* wlr_output) (:wlr-reference m))))
-                 v))))) 
-  (cpp/output_clean_up_listeners))
+                 v))))))
 

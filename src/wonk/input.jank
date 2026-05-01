@@ -3,15 +3,31 @@
   (:include "extern.hpp"
             "callbacks.h"))
 
+(defn keyboard-destroy [k]
+  (let [keyboard (cpp/unbox (:* wlr_keyboard) k)]
+    (println "destroy keyboard called")))
+
+(defn modifier-press [e]
+  (let [event (cpp/unbox (:* wlr_keyboard_key_event) e)]
+    (println "modifier press!")))
+
+(defn key-press [e]
+  (let [event (cpp/unbox (:* wlr_keyboard_key_event) e)]
+    (println "key press!")))
+
+(defn new-keyboard [d]
+  (println "setting up new keyboard"))
+
+(defn new-pointer [d]
+  (println "setting up new pointer"))
+
 (defn new-callback [d]
   (println "input new callback!!!!")
   (let [device (cpp/unbox (:* wlr_input_device) d)
         type (.-type device)
         ]
     (cond
-      (= type cpp/WLR_INPUT_DEVICE_KEYBOARD) (do
-                                               (println "-- new KEYBOARD device"))
-      (= type cpp/WLR_INPUT_DEVICE_POINTER) (do
-                                              (println "-- new POINTER device"))
+      (= type cpp/WLR_INPUT_DEVICE_KEYBOARD) (new-keyboard device)
+      (= type cpp/WLR_INPUT_DEVICE_POINTER)  (new-pointer device)
       (true) (do
                (println "------- UNKNOWN DEVICE")))))

@@ -1,6 +1,17 @@
+#ifndef WONK_LISTENERS
+#define WONK_LISTENERS
 
-void wire_backend_listeners(struct wlr_backend *);
-void clean_up_listeners();
+#include <wayland-server-core.h>
 
-void wire_output_listeners(struct wlr_output *);
-void output_clean_up_listeners();
+struct listeners {
+  int length;
+  struct wl_listener *listeners;
+};
+
+void cleanup_listeners(struct listeners *);
+struct listeners * wire_backend_listeners(struct wlr_backend *);
+struct listeners * wire_output_listeners(struct wlr_output *);
+struct listeners * wire_keyboard_listeners(struct wlr_input_device *, 
+		struct wlr_keyboard *);
+
+#endif

@@ -30,7 +30,8 @@
                     cursor (cpp/wlr_cursor_create)]
                 (cpp/wlr_cursor_attach_output_layout cursor output-layout)
                 (let [cursor-manager (cpp/wlr_xcursor_manager_create cpp/nullptr 24)
-                      seat (cpp/wlr_seat_create display "seat0")]
+                      seat (cpp/wlr_seat_create display "seat0")
+                      listeners (cpp/wire_backend_listeners backend)]
                   (reset! state/wm {:display (cpp/box display)
                               :session (cpp/box session)
                               :backend (cpp/box backend)
@@ -46,8 +47,8 @@
                               :seat (cpp/box seat)
                               :input-mode false
                               :outputs (atom [])
+                              :listeners (cpp/box listeners)
                               })
-                  (cpp/wire_backend_listeners backend)
                   (println "getting socket")
                   ;; TODO set up listener callbacks as well
                   (let [socket (cpp/wl_display_add_socket_auto display)]
@@ -74,7 +75,7 @@
       false))))
 
 (defn cleanup []
-  (cpp/clean_up_listeners)
+  (cpp/cleanup_listeners (cpp/unbox (:* cpp/listeners) (:listeners @state/wm)))
   (cpp/wl_display_destroy_clients (cpp/unbox (:* cpp/wl_display) (:display @state/wm)))
   (cpp/wlr_xcursor_manager_destroy (cpp/unbox (:* cpp/wlr_xcursor_manager) (:cursor-manager @state/wm)))
   (cpp/wlr_cursor_destroy (cpp/unbox (:* cpp/wlr_cursor) (:cursor @state/wm)))
