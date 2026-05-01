@@ -19,10 +19,12 @@
     (cpp/wlr_output_effective_resolution output (cpp/& width) (cpp/& height))
     (cpp/wlr_scene_rect_create background-scene-tree width height cpp/black)
     (cpp/wlr_scene_node_set_position (cpp/& (.-node background-scene-tree)) x y)
-    (let [layout-output (cpp/wlr_output_layout_add (cpp/unbox (:* wlr_output_layout) (:output-layout @state/wm))
-                                                   output x y)
-          scene-output (cpp/wlr_scene_output_create (cpp/unbox (:* wlr_scene) (:scene @state/wm))
-                                                    output)
+    (let [layout-output (cpp/wlr_output_layout_add 
+                          (cpp/unbox (:* wlr_output_layout) (:output-layout @state/wm))
+                          output x y)
+          scene-output (cpp/wlr_scene_output_create 
+                         (cpp/unbox (:* wlr_scene) (:scene @state/wm))
+                         output)
           ]
       (cpp/wlr_scene_output_layout_add_output (cpp/unbox (:* wlr_scene_output_layout) (:scene-layout @state/wm))
                                               layout-output
@@ -35,12 +37,6 @@
       (swap! outputs conj output-state))))
     
 (defn new-callback [o]
-  ;;
-  ;; TODO need to track listeners for each
-  ;; output so that they can be cleaned up
-  ;; correctly instead of just using ONE
-  ;; for everything ... r'oh r'oh
-  ;; same goes for keyboards, etc... :/
   (println "-- output new called")
   (let [output (cpp/unbox (:* wlr_output) o)
         listeners (cpp/wire_output_listeners output)]
@@ -60,13 +56,11 @@
     ;; :outputs should already be populated by the call to 
     ;; (initialize-scene)...
     (println @(:outputs @state/wm))
-    ;; TODO THIS SCREWED THE DATA STRUCTURE ?!?!?!?
     (swap! (:outputs @state/wm) 
            (fn [v]
              ;; didn't seem to need to box here, but doing it all the same...
              (update v (dec (count v)) assoc :listeners (cpp/box listeners))))
-    (println @(:outputs @state/wm))
-    ))
+    (println @(:outputs @state/wm))))
 
 (defn frame-callback []
   (println "-- output frame called"))
@@ -82,9 +76,7 @@
                      #(cpp/== output (cpp/unbox (:* wlr_output) (:wlr-reference %))) 
                      @(:outputs @state/wm)))
                      ]
-    (println "here")
     (cpp/cleanup_listeners (cpp/unbox (:* listeners) (:listeners state)))
-    (println "there")
         ;; then remove the output state
     (swap! (:outputs @state/wm)
            ;; remove any map that contains the wlr_output reference
