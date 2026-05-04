@@ -31,6 +31,14 @@ void eval_callback1(jank_object_ref **ref, const char* name, jank_object_ref arg
   jank_call1(*ref, arg);
 }
 
+void eval_callback2(jank_object_ref **ref, const char* name, 
+                    jank_object_ref arg1, jank_object_ref arg2) {
+  if (*ref == NULL) {
+    *ref = jank_eval(jank_read_string_c(name));
+  }
+  jank_call2(*ref, arg1, arg2);
+}
+
 void output_new(struct wl_listener *listener, void *data) {
   struct wlr_output *output = data;
   jank_object_ref box_output = jank_box("wlr_output*", output);
@@ -87,7 +95,8 @@ struct listeners* wire_output_listeners(struct wlr_output *output) {
 void keyboard_key(struct wl_listener *listener, void *data) {
   struct wlr_keyboard_key_event *event = data;
   jank_object_ref box_data = jank_box("wlr_keyboard_key_event*", event);
-  eval_callback1(&keyboard_key_callback, "#'wonk.input/key-press", box_data);
+  jank_object_ref listener_box = jank_box("wl_listener*", listener);
+  eval_callback2(&keyboard_key_callback, "#'wonk.input/key-press", box_data, listener_box);
 }
 
 void keyboard_modifier(struct wl_listener *listener, void *data) {

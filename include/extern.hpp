@@ -1,6 +1,7 @@
 extern "C" {
 #define WLR_USE_UNSTABLE
 #include <wlr/util/log.h>
+#include <xkbcommon/xkbcommon.h>
 
 #define static
 

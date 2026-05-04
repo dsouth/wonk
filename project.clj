@@ -15,6 +15,7 @@
                         "native"]
          :linked-libraries ["wlroots-0.20",
                             "wayland-server"
+                            "xkbcommon"
                             "callbacks"]}
 
   :profiles {:base {:jank {:output-dir "target/debug"
