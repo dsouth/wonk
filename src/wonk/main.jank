@@ -54,12 +54,17 @@
                   ;; TODO set up listener callbacks as well
                   (let [socket (cpp/wl_display_add_socket_auto display)]
                     (if (not (= socket 0))
-                      (if (not (= (cpp/wlr_backend_start backend)))
+                      (if (not (= (cpp/wlr_backend_start backend) 0))
                         (do
                           (println "backed started")
-;;                          (cpp/setenv "WAYLAND_DISPLAY" socket true)
+                          ;;(cpp/setenv "WAYLAND_DISPLAY" socket true)
+
+
                          true)
                         (do 
+                          (println "backend NOT started")
+;;                          (cpp/wlr_backend_destroy backend)
+;;                          (cpp/wl_display_destroy display)
                           ;;could not start backend
                           false))
                       (do
@@ -76,6 +81,7 @@
       false))))
 
 (defn cleanup []
+  (println "cleaning up...")
   (cpp/cleanup_listeners (cpp/unbox (:* cpp/listeners) (:listeners @state/wm)))
   (cpp/wl_display_destroy_clients (cpp/unbox (:* cpp/wl_display) (:display @state/wm)))
   (cpp/wlr_xcursor_manager_destroy (cpp/unbox (:* cpp/wlr_xcursor_manager) (:cursor-manager @state/wm)))
