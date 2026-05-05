@@ -62,7 +62,7 @@
 (defn frame-callback []
   (println "-- output frame called"))
 
-(defn request-state []
+(defn request-state-callback []
   (println "-- output request state called"))
 
 (defn destroy-callback [o]
@@ -73,7 +73,7 @@
                   #(cpp/== output (cpp/unbox (:* wlr_output) (:wlr-reference %))) 
                   @(:outputs @state/wm)))
         ]
-    (cpp/cleanup_listeners (cpp/unbox (:* listeners) (:listeners state)))
+    (cpp/cleanup_listeners (cpp/unbox (:* array_of_listeners) (:listeners state)))
         ;; then remove the output state
     (swap! (:outputs @state/wm)
            ;; remove any map that contains the wlr_output reference

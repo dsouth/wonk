@@ -5,6 +5,7 @@
 #include <wlr/types/wlr_keyboard.h>
 #include <cpp/jank/c_api.h>
 #include <stdlib.h>
+#include <stdio.h>
 
 #include "../include/callbacks.h"
 
@@ -18,6 +19,7 @@ jank_object_ref *keyboard_modifier_callback = NULL;
 jank_object_ref *keyboard_destroy_callback = NULL;
 
 void eval_callback(jank_object_ref **ref, const char* name) {
+  printf("evaluating no argument %s\n", name);
   if (*ref == NULL) {
     *ref = jank_eval(jank_read_string_c(name));
   }
@@ -25,6 +27,7 @@ void eval_callback(jank_object_ref **ref, const char* name) {
 }
 
 void eval_callback1(jank_object_ref **ref, const char* name, jank_object_ref arg) {
+  printf("evaluating 1 argument %s\n", name);
   if (*ref == NULL) {
     *ref = jank_eval(jank_read_string_c(name));
   }
@@ -33,6 +36,7 @@ void eval_callback1(jank_object_ref **ref, const char* name, jank_object_ref arg
 
 void eval_callback2(jank_object_ref **ref, const char* name, 
                     jank_object_ref arg1, jank_object_ref arg2) {
+  printf("evaluating 2 argument %s\n", name);
   if (*ref == NULL) {
     *ref = jank_eval(jank_read_string_c(name));
   }
@@ -51,19 +55,22 @@ void input_new(struct wl_listener *listener, void *data) {
   eval_callback1(&input_new_callback, "#'wonk.input/new-callback", box_data);
 }
  
-struct listeners* initialize_listeners(uint count) {
-  struct listeners *listeners = calloc(1, sizeof(struct listeners));
+struct array_of_listeners* initialize_listeners(uint count) {
+  struct array_of_listeners *listeners = calloc(1, sizeof(struct array_of_listeners));
   listeners->length = count;
-  listeners->listeners = calloc(listeners->length, sizeof(struct wl_listener));
+  listeners->the_listeners = calloc(listeners->length, sizeof(struct wl_listener *));
+  for (int i = 0; i < count; i++) {
+    listeners->the_listeners[i] = calloc(1, sizeof(struct wl_listener));
+  }
   return listeners;
  }
 
-struct listeners* wire_backend_listeners(struct wlr_backend *backend) {
-  struct listeners *listeners = initialize_listeners(2);
-  listeners->listeners[0].notify = output_new;
-  wl_signal_add(&backend->events.new_output, &listeners->listeners[0]);
-  listeners->listeners[1].notify = input_new;
-  wl_signal_add(&backend->events.new_input, &listeners->listeners[1]);
+struct array_of_listeners* wire_backend_listeners(struct wlr_backend *backend) {
+  struct array_of_listeners *listeners = initialize_listeners(2);
+  listeners->the_listeners[0]->notify = output_new;
+  wl_signal_add(&backend->events.new_output, listeners->the_listeners[0]);
+  listeners->the_listeners[1]->notify = input_new;
+  wl_signal_add(&backend->events.new_input, listeners->the_listeners[1]);
   return listeners;
 }
 
@@ -81,14 +88,14 @@ void output_request_state(struct wl_listener *listener, void *data) {
   eval_callback(&output_request_state_callback, "#'wonk.output/request-state-callback");
 }
 
-struct listeners* wire_output_listeners(struct wlr_output *output) {
-  struct listeners *listeners = initialize_listeners(3);
-  listeners->listeners[0].notify = output_destroy;
-  wl_signal_add(&output->events.destroy, &listeners->listeners[0]);
-  listeners->listeners[1].notify = output_frame;
-  wl_signal_add(&output->events.frame, &listeners->listeners[1]);
-  listeners->listeners[2].notify = output_request_state;
-  wl_signal_add(&output->events.request_state, &listeners->listeners[2]);
+struct array_of_listeners* wire_output_listeners(struct wlr_output *output) {
+  struct array_of_listeners *listeners = initialize_listeners(3);
+  listeners->the_listeners[0]->notify = output_destroy;
+  wl_signal_add(&output->events.destroy, listeners->the_listeners[0]);
+  listeners->the_listeners[1]->notify = output_frame;
+  wl_signal_add(&output->events.frame, listeners->the_listeners[1]);
+  listeners->the_listeners[2]->notify = output_request_state;
+  wl_signal_add(&output->events.request_state, listeners->the_listeners[2]);
   return listeners;
 }
 
@@ -102,31 +109,53 @@ void keyboard_key(struct wl_listener *listener, void *data) {
 void keyboard_modifier(struct wl_listener *listener, void *data) {
   struct wlr_keyboard_key_event *event = data;
   jank_object_ref box_data = jank_box("wlr_keyboard_key_event*", event);
-  eval_callback1(&keyboard_key_callback, "#'wonk.input/modifier-press", box_data);
+  eval_callback1(&keyboard_modifier_callback, "#'wonk.input/modifier-press", box_data);
 }
 
 void keyboard_destroy(struct wl_listener *listener, void *data) {
   struct wlr_keyboard *keyboard = data;
   jank_object_ref box_data = jank_box("wlr_keyboard*", keyboard);
-  eval_callback1(&keyboard_key_callback, "#'wonk.input/keyboard-destroy", box_data);
+  eval_callback1(&keyboard_destroy_callback, "#'wonk.input/keyboard-destroy", box_data);
 }
 
-struct listeners * wire_keyboard_listeners(struct wlr_input_device *device,
+struct array_of_listeners * wire_keyboard_listeners(struct wlr_input_device *device,
                                            struct wlr_keyboard *keyboard) {
-  struct listeners *listeners = initialize_listeners(3);
-  listeners->listeners[0].notify = keyboard_key;
-  wl_signal_add(&keyboard->events.key, &listeners->listeners[0]);
-  listeners->listeners[1].notify = keyboard_modifier;
-  wl_signal_add(&keyboard->events.modifiers, &listeners->listeners[1]);
-  listeners->listeners[2].notify = keyboard_destroy;
-  wl_signal_add(&device->events.destroy, &listeners->listeners[2]);
+  struct array_of_listeners *listeners = initialize_listeners(3);
+  listeners->the_listeners[0]->notify = keyboard_key;
+  wl_signal_add(&keyboard->events.key, listeners->the_listeners[0]);
+  listeners->the_listeners[1]->notify = keyboard_modifier;
+  wl_signal_add(&keyboard->events.modifiers, listeners->the_listeners[1]);
+  listeners->the_listeners[2]->notify = keyboard_destroy;
+  wl_signal_add(&device->events.destroy, listeners->the_listeners[2]);
   return listeners;
 }
 
-void cleanup_listeners(struct listeners *listeners) {
+void cleanup_listeners(struct array_of_listeners *listeners) {
   for (int i = 0; i < listeners->length; i++) {
-    wl_list_remove(&listeners->listeners[i].link);
+    wl_list_remove(&listeners->the_listeners[i]->link);
   }
-  free(listeners->listeners);
+  for (int i = 0; i < listeners->length; i++) {
+    free(listeners->the_listeners[i]);
+  }
+  free(listeners->the_listeners);
   free(listeners);
+}
+
+// no aget so we are doing this
+xkb_keysym_t get_sym_at_index(const xkb_keysym_t *syms, int index) {
+  return syms[index];
+}
+
+bool is_listener_in_listeners(struct wl_listener *target, struct wl_listener** listeners, int count) {
+  for (int i = 0; i < count; i++){
+    if (target == listeners[i]) {
+      return true;
+    }
+  }
+  return false;
+}
+
+// this is also because we used a functin that used aget to figure this out
+struct wl_listener * get_listener_pointer_at_index(struct wl_listener **wl, int index) {
+  return wl[index];
 }

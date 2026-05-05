@@ -57,15 +57,12 @@
                       (if (not (= (cpp/wlr_backend_start backend) 0))
                         (do
                           (println "backed started")
-                          ;;(cpp/setenv "WAYLAND_DISPLAY" socket true)
-
-
+                          (cpp/setenv "WAYLAND_DISPLAY" socket 1) ;;1 is true :/
+                          (cpp/wlr_cursor_set_xcursor cursor cursor-manager "default")
                          true)
                         (do 
-                          (println "backend NOT started")
-;;                          (cpp/wlr_backend_destroy backend)
-;;                          (cpp/wl_display_destroy display)
                           ;;could not start backend
+                          (println "backend NOT started")
                           false))
                       (do
                         ;;could not create wayland socket
@@ -82,7 +79,7 @@
 
 (defn cleanup []
   (println "cleaning up...")
-  (cpp/cleanup_listeners (cpp/unbox (:* cpp/listeners) (:listeners @state/wm)))
+  (cpp/cleanup_listeners (cpp/unbox (:* array_of_listeners) (:listeners @state/wm)))
   (cpp/wl_display_destroy_clients (cpp/unbox (:* cpp/wl_display) (:display @state/wm)))
   (cpp/wlr_xcursor_manager_destroy (cpp/unbox (:* cpp/wlr_xcursor_manager) (:cursor-manager @state/wm)))
   (cpp/wlr_cursor_destroy (cpp/unbox (:* cpp/wlr_cursor) (:cursor @state/wm)))
@@ -98,9 +95,8 @@
   (cpp/wlr_log_init cpp/WLR_DEBUG cpp/nullptr)
 ;;  (cpp/wlr_log cpp/WLR_DEBUG "starting up...")
   (if (init)
-  ;; kick it off here
-    (println "wonk is GO!")
-  )
+    (cpp/wl_display_run (cpp/unbox (:* wl_display) (:display @state/wm)))
+    (println "oopsie"))
   (cleanup)
  )
 

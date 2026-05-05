@@ -6,20 +6,23 @@
             "xkbcommon/xkbcommon.h"))
 
 (defn is-target-in-vec? [target array length index]
-  (if (= length index)
-    false
-    (if (= target (aget array index))
-      true
-      (recur target array length (inc index)))))
+  (let [unboxed-target (cpp/unbox (:* wl_listener) target)]
+    (if (= length index)
+      false
+      (if (cpp/== unboxed-target (cpp/get_listener_pointer_at_index 
+                              (cpp/unbox (:* (:* wl_listener)) array) index))
+        true
+        (recur target array length (inc index))))))
 
 ;; for each map in the keyboard array, pass in the listeners arry and length
 ;; TODO better way to get the listeners?!?!
 (defn get-keyboard-map [target m v]
   (if (nil? m)
     nil
-    (let [listeners (cpp/unbox (:* listeners) (:listeners m))
-          length (.-length listeners)
-          array (.-listeners listeners)]
+    (let [ls (cpp/unbox (:* array_of_listeners) (:listeners m))
+          length (.-length ls)
+          array (cpp/box (.-the_listeners ls))]
+      ;; use some? instead?
       (if (is-target-in-vec? target array length 0)
         m
         (let [head (first v)
@@ -27,21 +30,25 @@
           (recur target head tail))))))
 
 (defn modifier-press [e]
+  (comment this might not have been compiling... :/
   (let [event (cpp/unbox (:* wlr_keyboard_key_event) e)
         keycode (+ (.-keycode event) 8)
         syms (#cpp (:* xkb_keysym_t))]
     (println "modifier press!")))
+  (println "modifier pressed!"))
 
 (defn key-press-modal [event sym-size syms]
   (if (cpp/== (.-state (cpp/unbox (:* wlr_keyboard_key_event) event)) 
               cpp/WL_KEYBOARD_KEY_STATE_PRESSED)
     (loop [index 0]
-      (case (aget syms index)
-        cpp/XKB_KEY_Esacpe (cpp/wl_display_terminate 
-                             (cpp/unbox (:* wl_display) (:display @state/wm)))
-        true)
-      (if (< sym-size index)
-        (recur (inc index))))))
+      (let [key-sym (cpp/get_sym_at_index
+                      (cpp/unbox (:* (:const xkb_keysym_t)) syms) index)]
+        (cond 
+          (cpp/== cpp/XKB_KEY_Escape key-sym)
+            (cpp/wl_display_terminate (cpp/unbox (:* wl_display) (:display @state/wm)))
+          :else nil))
+        (if (< sym-size index)
+          (recur (inc index))))))
 
 (defn key-press [e l]
   (let [event (cpp/unbox (:* wlr_keyboard_key_event) e)        
@@ -49,19 +56,19 @@
         syms (#cpp (:* (:const xkb_keysym_t)))
         keyboard-state-list @(:keyboards @state/wm)
         keyboard-state (get-keyboard-map 
-                         (cpp/unbox (:* wl_listener) l)
+                         l
                          (first keyboard-state-list)
                          (rest keyboard-state-list))
         ]
     (if (not (nil? keyboard-state))
       (let [wlr-keyboard (cpp/unbox (:* wlr_keyboard) (:wlr-reference keyboard-state))
-            xkb-state (cpp/unbox (:* xkb_state) (:* (.-xkb_state wlr-keyboard)))
+            xkb-state (.-xkb_state wlr-keyboard)
             sym-size (cpp/xkb_state_key_get_syms 
                        xkb-state
                        keycode 
                        (cpp/& syms))
             ]
-      (key-press-modal [e sym-size (cpp/box syms)])))
+        (key-press-modal e sym-size (cpp/box syms))))
     (println "key press!")))
 
 (defn new-keyboard [d]
@@ -79,9 +86,9 @@
     (let [rate-hz 25
           delay-ms 600]
       (cpp/wlr_keyboard_set_repeat_info wlr_keyboard rate-hz delay-ms))
-    (let [listeners (cpp/wire_keyboard_listeners device wlr_keyboard)]
+    (let [ls (cpp/wire_keyboard_listeners device wlr_keyboard)]
       (swap! (:keyboards @state/wm) conj {:wlr-reference (cpp/box wlr_keyboard)
-                                          :listeners (cpp/box listeners)}))
+                                          :listeners (cpp/box ls)}))
     (cpp/wlr_seat_set_keyboard (cpp/unbox (:* wlr_seat) (:seat @state/wm))
                                wlr_keyboard)))
 
@@ -92,7 +99,7 @@
                   #(cpp/== keyboard (cpp/unbox (:* wlr_keyboard) (:wlr-reference %)))
                   @(:keyboards @state/wm)))
                   ]
-    (cpp/cleanup_listeners (cpp/unbox (:* listeners) (:listeners state)))
+    (cpp/cleanup_listeners (cpp/unbox (:* array_of_listeners) (:listeners state)))
     (swap! (:keyboards @state/wm)
            (fn [v]
              (vec
@@ -108,10 +115,10 @@
 (defn new-callback [d]
   (println "input new callback!!!!")
   (let [device (cpp/unbox (:* wlr_input_device) d)
-        type (.-type device)
+        device-type (.-type device)
         ]
     (cond
-      (= type cpp/WLR_INPUT_DEVICE_KEYBOARD) (new-keyboard d)
-      (= type cpp/WLR_INPUT_DEVICE_POINTER)  (new-pointer d)
+      (= device-type cpp/WLR_INPUT_DEVICE_KEYBOARD) (new-keyboard d)
+      (= device-type cpp/WLR_INPUT_DEVICE_POINTER)  (new-pointer d)
       (true) (do
                (println "------- UNKNOWN DEVICE")))))
