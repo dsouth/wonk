@@ -93,6 +93,7 @@
                                wlr_keyboard)))
 
 (defn keyboard-destroy [k]
+  (print "keyboard destroy state is :" @(:keyboards @state/wm))
   (let [keyboard (cpp/unbox (:* wlr_keyboard) k)
         state (first
                 (filter
@@ -104,9 +105,9 @@
            (fn [v]
              (vec
                (remove
-                 (fn [m]
-                   #(cpp/== keyboard (cpp/unbox (:* wlr_keyboard) (:wlr-reference m))))
-                 v))))))
+                 (fn [m] (cpp/== keyboard (cpp/unbox (:* wlr_keyboard) (:wlr-reference m))))
+                 v)))
+           )))
 
 
 (defn new-pointer [d]
