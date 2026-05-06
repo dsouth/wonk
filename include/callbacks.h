@@ -17,6 +17,7 @@ struct array_of_listeners * wire_backend_listeners(struct wlr_backend *);
 struct array_of_listeners * wire_output_listeners(struct wlr_output *);
 struct array_of_listeners * wire_keyboard_listeners(struct wlr_input_device *, 
 		struct wlr_keyboard *);
+struct array_of_listeners * wire_cursor_listeners(struct wlr_cursor *);
 
 // TODO These two should go when aget is fully implemented! 
 xkb_keysym_t get_sym_at_index(const xkb_keysym_t *, int);

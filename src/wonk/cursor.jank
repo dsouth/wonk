@@ -1,0 +1,8 @@
+(ns wonk.cursor
+  (:require [wonk.state :as state])
+  (:include "extern.hpp"
+            "callbacks.h"))
+ 
+(defn cursor-frame [c]
+  (cpp/wlr_seat_pointer_notify_frame 
+    (cpp/unbox (:* wlr_seat) (:seat @state/wm))))

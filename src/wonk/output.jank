@@ -2,7 +2,8 @@
   (:require [wonk.state :as state])
   (:include "extern.hpp"
             "globals.h"
-            "callbacks.h"))
+            "callbacks.h"
+            "time.h"))
 
 (defn initialize-scene [o]
   (let [output (cpp/unbox (:* wlr_output) o)
@@ -59,8 +60,16 @@
              ;; didn't seem to need to box here, but doing it all the same...
              (update v (dec (count v)) assoc :listeners (cpp/box listeners))))))
 
-(defn frame-callback []
-  (println "-- output frame called"))
+(defn frame-callback [o]
+  (let [output (cpp/unbox (:* wlr_output) o)
+        scene (cpp/unbox (:* wlr_scene) (:scene @state/wm))
+        scene-output (cpp/wlr_scene_get_scene_output scene output)
+        ]
+    (cpp/wlr_scene_output_commit scene-output cpp/nullptr)
+    (let [now (#cpp timespec)]
+      (cpp/clock_gettime cpp/CLOCK_MONOTONIC (cpp/& now))
+      (cpp/wlr_scene_output_send_frame_done scene-output (cpp/& now)))))
+
 
 (defn request-state-callback []
   (println "-- output request state called"))

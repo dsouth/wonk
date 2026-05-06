@@ -1,6 +1,6 @@
 #!/bin/bash
 
-clang -shared -I/home/dsouth/development/jank/jank/compiler+runtime/include \
-	-I/usr/include/wlroots-0.20/ -L/home/dsouth/development/jank/jank/compiler+runtime/build/\
+clang -shared -I/home/dsouth/development/repos/github/jank/compiler+runtime/include \
+	-I/usr/include/wlroots-0.20/ -L/home/dsouth/development/repos/github/jank/compiler+runtime/build/\
 	-ljank -fPIC -DWLR_USE_UNSTABLE -I /usr/include/pixman-1/\
 	-o libcallbacks.so -g -ggdb -g3 -O0 -fno-omit-frame-pointer -rdynamic listeners.c 

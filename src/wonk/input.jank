@@ -93,7 +93,7 @@
                                wlr_keyboard)))
 
 (defn keyboard-destroy [k]
-  (print "keyboard destroy state is :" @(:keyboards @state/wm))
+  (println "keyboard destroy state is :" @(:keyboards @state/wm))
   (let [keyboard (cpp/unbox (:* wlr_keyboard) k)
         state (first
                 (filter
@@ -111,7 +111,9 @@
 
 
 (defn new-pointer [d]
-  (println "setting up new pointer"))
+  (cpp/wlr_cursor_attach_input_device 
+    (cpp/unbox (:* wlr_cursor) (:cursor @state/wm))
+    (cpp/unbox (:* wlr_input_device) d)))
 
 (defn new-callback [d]
   (println "input new callback!!!!")
