@@ -19,6 +19,10 @@ jank_object_ref *keyboard_key_callback = NULL;
 jank_object_ref *keyboard_modifier_callback = NULL;
 jank_object_ref *keyboard_destroy_callback = NULL;
 jank_object_ref *cursor_frame_callback = NULL;
+jank_object_ref *cursor_motion_callback = NULL;
+jank_object_ref *cursor_motion_absolute_callback = NULL;
+jank_object_ref *cursor_button_callback = NULL;
+jank_object_ref *cursor_axis_callback = NULL;
 
 void eval_callback(jank_object_ref **ref, const char *name, bool debug) {
   if (debug)
@@ -149,17 +153,56 @@ wire_keyboard_listeners(struct wlr_input_device *device,
   return listeners;
 }
 
+// TODO
+// Frame and axis events aren't currently used so maybe get rid 
+// of them. Also, frame event may not even be the right type? :/
 void cursor_frame(struct wl_listener *listener, void *data) {
-  struct wlr_cursor *cursor = data;
-  jank_object_ref box_data = jank_box("wlr_cursor*", cursor);
-  eval_callback1(&cursor_frame_callback, "#'wonk.cursor/cursor-frame",
+  struct wlr_button_pointer_event *event = data;
+  jank_object_ref box_data = jank_box("wlr_button_pointer_event*", event);
+  eval_callback1(&cursor_frame_callback, "#'wonk.cursor/cursor-frame", box_data,
+                 false);
+}
+
+void cursor_motion(struct wl_listener *listener, void *data) {
+  struct wlr_pointer_motion_event *event = data;
+  jank_object_ref box_data = jank_box("wlr_pointer_motion_event*", event);
+  eval_callback1(&cursor_motion_callback, "#'wonk.cursor/cursor-motion",
                  box_data, false);
 }
 
+void cursor_motion_absolute(struct wl_listener *listener, void *data) {
+  struct wlr_pointer_motion_absolute_event *event = data;
+  jank_object_ref box_data = jank_box("wlr_pointer_motion_absolute_event*", event);
+  eval_callback1(&cursor_motion_absolute_callback,
+                 "#'wonk.cursor/cursor-motion-absolute", box_data, false);
+}
+
+void cursor_button(struct wl_listener *listener, void *data) {
+  struct wlr_button_pointer_event *event = data;
+  jank_object_ref box_data = jank_box("wlr_button_pointer_event*", event);
+  eval_callback1(&cursor_button_callback, "#'wonk.cursor/cursor-button",
+                 box_data, false);
+}
+
+void cursor_axis(struct wl_listener *listener, void *data) {
+  struct wlr_pointer_axis_event *event = data;
+  jank_object_ref box_data = jank_box("wlr_pointer_axis_event*", event);
+  eval_callback1(&cursor_axis_callback, "#'wonk.cursor/cursor-axis", box_data,
+                 false);
+}
+
 struct array_of_listeners *wire_cursor_listeners(struct wlr_cursor *cursor) {
-  struct array_of_listeners *listeners = initialize_listeners(1);
+  struct array_of_listeners *listeners = initialize_listeners(5);
   listeners->the_listeners[0]->notify = cursor_frame;
   wl_signal_add(&cursor->events.frame, listeners->the_listeners[0]);
+  listeners->the_listeners[1]->notify = cursor_motion;
+  wl_signal_add(&cursor->events.motion, listeners->the_listeners[1]);
+  listeners->the_listeners[2]->notify = cursor_motion_absolute;
+  wl_signal_add(&cursor->events.motion_absolute, listeners->the_listeners[2]);
+  listeners->the_listeners[3]->notify = cursor_button;
+  wl_signal_add(&cursor->events.button, listeners->the_listeners[3]);
+  listeners->the_listeners[4]->notify = cursor_axis;
+  wl_signal_add(&cursor->events.axis, listeners->the_listeners[4]);
   return listeners;
 }
 
