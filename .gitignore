@@ -18,3 +18,4 @@ src/wonk/target/*
 a.out
 native/.cache/*
 native/*.so
+wonk.log
