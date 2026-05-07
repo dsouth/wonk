@@ -25,6 +25,8 @@ xkb_keysym_t get_sym_at_index(const xkb_keysym_t *, int);
 struct wl_listener *get_listener_pointer_at_index(struct wl_listener **, int);
 bool is_listener_in_listeners(struct wl_listener *target,
                               struct wl_listener **listeners, int count);
+struct wlr_output_layout_output *
+output_get_primary_output_layout(struct wlr_output_layout *);
 #ifdef __cplusplus
 }
 #endif

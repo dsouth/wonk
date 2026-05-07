@@ -154,7 +154,7 @@ wire_keyboard_listeners(struct wlr_input_device *device,
 }
 
 // TODO
-// Frame and axis events aren't currently used so maybe get rid 
+// Frame and axis events aren't currently used so maybe get rid
 // of them. Also, frame event may not even be the right type? :/
 void cursor_frame(struct wl_listener *listener, void *data) {
   struct wlr_button_pointer_event *event = data;
@@ -172,7 +172,8 @@ void cursor_motion(struct wl_listener *listener, void *data) {
 
 void cursor_motion_absolute(struct wl_listener *listener, void *data) {
   struct wlr_pointer_motion_absolute_event *event = data;
-  jank_object_ref box_data = jank_box("wlr_pointer_motion_absolute_event*", event);
+  jank_object_ref box_data =
+      jank_box("wlr_pointer_motion_absolute_event*", event);
   eval_callback1(&cursor_motion_absolute_callback,
                  "#'wonk.cursor/cursor-motion-absolute", box_data, false);
 }
@@ -230,6 +231,20 @@ bool is_listener_in_listeners(struct wl_listener *target,
     }
   }
   return false;
+}
+
+// Don't really want to do this in jank land... :/
+struct wlr_output_layout_output *
+output_get_primary_output_layout(struct wlr_output_layout *layout) {
+  struct wlr_output_layout_output *layout_output = NULL;
+  wl_list_for_each(layout_output, &layout->outputs, link) {
+    if (layout_output->x == 0 && layout_output->y == 0) {
+      break;
+    }
+  }
+  // if we don't find 0, 0 then we're just returning the last configured output... :/
+  // TODO
+  return layout_output;
 }
 
 // this is also because we used a function that used aget to figure this out

@@ -2,6 +2,25 @@
   (:require [wonk.state :as state])
   (:include "extern.hpp"
             "callbacks.h"))
+
+(defn center-cursor-on-output [c l]
+  (let [cursor (cpp/unbox (:* wlr_cursor) c)
+        layout (cpp/unbox (:* wlr_output_layout_output) l)
+        x (.-x layout)
+        y (.-y layout)
+        ;; box unboxing to get around codegen bug
+        output (cpp/box (.-output layout))
+        width (.-width (cpp/unbox (:* wlr_output) output))
+        height (.-height (cpp/unbox (:* wlr_output) output))
+       ]
+    (cpp/wlr_cursor_warp
+      cursor cpp/nullptr (/ (+ x width) 2) (/ (+ y height) 2))))
+
+(defn center-on-primary-monitor [cursor layout]
+  (center-cursor-on-output 
+    cursor
+    (cpp/box (cpp/output_get_primary_output_layout 
+               (cpp/unbox (:* wlr_output_layout) layout)))))
  
 (defn cursor-frame [e]
   (cpp/wlr_seat_pointer_notify_frame 
@@ -10,6 +29,7 @@
 (defn cursor-motion [e]
   (let [event (cpp/unbox (:* wlr_pointer_motion_event) e)
         event-time (.-time_msec event)
+        ;; box unboxing to get around codegen bug
         pointer (cpp/box (.-pointer event))
         base (.-base (cpp/unbox (:* wlr_pointer) pointer))
         ]

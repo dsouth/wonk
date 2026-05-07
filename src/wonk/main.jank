@@ -1,7 +1,7 @@
 (ns wonk.main
   (:require wonk.output)
   (:require wonk.input)
-  (:require wonk.cursor)
+  (:require [wonk.cursor :as cursor])
   (:require [wonk.state :as state])
 ;;  (:require wonk.structs) maybe once StructMap is implmeneted?
   (:include "extern.hpp" 
@@ -62,6 +62,9 @@
                         (do
                           (println "backed started")
                           (cpp/setenv "WAYLAND_DISPLAY" socket 1) ;;1 is true :/
+                          ;; better to box again or access wm state?
+                          (cursor/center-on-primary-monitor 
+                            (:cursor @state/wm) (:output-layout @state/wm))
                           (cpp/wlr_cursor_set_xcursor cursor cursor-manager "default")
                          true)
                         (do 
