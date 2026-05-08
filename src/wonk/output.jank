@@ -74,21 +74,18 @@
 (defn request-state-callback []
   (println "-- output request state called"))
 
+(defn output-pred [o m]
+  (cpp/== (cpp/unbox (:* wlr_output) o)
+          (cpp/unbox (:* wlr_output) (:wlr-reference m))))
+
 (defn destroy-callback [o]
-  (let [output (cpp/unbox (:* wlr_output) o)
+  (let [p (partial output-pred o)
         ;; first find the output state to remove the listeners...
-        state (first 
-                (filter 
-                  #(cpp/== output (cpp/unbox (:* wlr_output) (:wlr-reference %))) 
-                  @(:outputs @state/wm)))
+        state (first (filter p @(:outputs @state/wm)))
         ]
     (cpp/cleanup_listeners (cpp/unbox (:* array_of_listeners) (:listeners state)))
         ;; then remove the output state
     (swap! (:outputs @state/wm)
            ;; remove any map that contains the wlr_output reference
-           (fn [v]
-             (vec
-               (remove 
-                 (fn [m] (cpp/== output (cpp/unbox (:* wlr_output) (:wlr-reference m))))
-                 v))))))
+           (fn [v] (vec (remove p v))))))
 

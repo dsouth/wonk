@@ -92,23 +92,18 @@
     (cpp/wlr_seat_set_keyboard (cpp/unbox (:* wlr_seat) (:seat @state/wm))
                                wlr_keyboard)))
 
+(defn keyboard-pred [k m]
+  (cpp/== (cpp/unbox (:* wlr_keyboard) k)
+          (cpp/unbox (:* wlr_keyboard) (:wlr-reference m))))
+
 (defn keyboard-destroy [k]
   (println "keyboard destroy state is :" @(:keyboards @state/wm))
-  (let [keyboard (cpp/unbox (:* wlr_keyboard) k)
-        state (first
-                (filter
-                  #(cpp/== keyboard (cpp/unbox (:* wlr_keyboard) (:wlr-reference %)))
-                  @(:keyboards @state/wm)))
-                  ]
+  (let [p (partial keyboard-pred k)
+        state (first (filter p @(:keyboards @state/wm)))
+        ]
     (cpp/cleanup_listeners (cpp/unbox (:* array_of_listeners) (:listeners state)))
     (swap! (:keyboards @state/wm)
-           (fn [v]
-             (vec
-               (remove
-                 (fn [m] (cpp/== keyboard (cpp/unbox (:* wlr_keyboard) (:wlr-reference m))))
-                 v)))
-           )))
-
+           (fn [v] (vec (remove p v))))))
 
 (defn new-pointer [d]
   (cpp/wlr_cursor_attach_input_device 
