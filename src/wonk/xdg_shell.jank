@@ -1,0 +1,64 @@
+(ns wonk.xdg-shell
+  (:require [wonk.state :as state]))
+
+(defn listener-pred [l i m]
+  #(cpp/== (cpp/unbox (:* wl_listener) l)
+           (cpp/get_listener_pointer_at_index
+               (.-the_listeners (cpp/unbox (:* array_of_listeners) (:listeners m)))
+               i)))
+
+(defn get-state [l i]
+  (first (filter (partial listener-pred l i) 
+                 @(:toplevels @state/wm))))
+
+(defn toplevel-surface-map []
+  (println "toplevel surface map"))
+
+(defn toplevel-surface-unmap []
+  (println "toplevel surface unmap"))
+
+(defn toplevel-surface-commit []
+  (println "toplevel surface commit"))
+
+(defn toplevel-request-maximize []
+  (println "toplevel request maximize"))
+
+(defn toplevel-request-fullscreen []
+  (println "toplevel request fullscreen"))
+
+(defn toplevel-request-move []
+  (println "toplevel request move"))
+
+(defn toplevel-request-resize []
+  (println "toplevel request resize"))
+
+(defn toplevel-destroy [l]
+  ;; destroy listener is hard coded to be the 8th listener (index 7)
+  (cpp/cleanup_listeners (cpp/unbox (:* array_of_listeners) (:listeners (get-state l 7))))
+  (swap! (:toplevels @state/wm)
+         (fn [v] (vec (remove (partial listener-pred l 7) v)))))
+
+(defn new-toplevel [t]
+  (let [toplevel (cpp/unbox (:* wlr_xdg_toplevel) t)
+        ;; TODO box unboxing to get around codegen bug
+        base (cpp/box (.-base toplevel))
+        scene-tree (cpp/wlr_scene_xdg_surface_create 
+                     (cpp/& (.-tree (cpp/unbox (:* wlr_scene) (:scene @state/wm))))
+                     (.-base toplevel))
+        ]
+    (cpp/= (.-data (.-node scene-tree)) 
+           (cpp/cast (:* void) toplevel))
+    ;; TODO box unboxing to get around codegen bug
+    (cpp/= (.-data (cpp/unbox (:* wlr_xdg_surface) base)) 
+           (cpp/cast (:* void) scene-tree))
+    (let [listeners (cpp/wire_xdg_toplevel_listeners toplevel)]
+      (swap! (:toplevels @state/wm) conj {:wlr-refernece (cpp/box toplevel)
+                                          :scene-tree (cpp/box scene-tree)
+                                          :listeners listeners})
+    ;; TODO get focused output (implement it as well!)
+    ;; store toplevel state
+    )))
+
+
+
+

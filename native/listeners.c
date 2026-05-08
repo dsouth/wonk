@@ -7,6 +7,7 @@
 #include <wlr/backend.h>
 #include <wlr/types/wlr_cursor.h>
 #include <wlr/types/wlr_keyboard.h>
+#include <wlr/types/wlr_xdg_shell.h>
 
 #include "../include/callbacks.h"
 
@@ -23,6 +24,16 @@ jank_object_ref *cursor_motion_callback = NULL;
 jank_object_ref *cursor_motion_absolute_callback = NULL;
 jank_object_ref *cursor_button_callback = NULL;
 jank_object_ref *cursor_axis_callback = NULL;
+jank_object_ref *xdg_shell_new_toplevel_callback = NULL;
+jank_object_ref *xdg_shell_new_popup_callback = NULL;
+jank_object_ref *toplevel_surface_map_callback = NULL;
+jank_object_ref *toplevel_surface_unmap_callback = NULL;
+jank_object_ref *toplevel_surface_commit_callback = NULL;
+jank_object_ref *toplevel_request_maximize_callback = NULL;
+jank_object_ref *toplevel_request_fullscreen_callback = NULL;
+jank_object_ref *toplevel_request_move_callback = NULL;
+jank_object_ref *toplevel_request_resize_callback = NULL;
+jank_object_ref *toplevel_destroy_callback = NULL;
 
 void eval_callback(jank_object_ref **ref, const char *name, bool debug) {
   if (debug)
@@ -207,6 +218,103 @@ struct array_of_listeners *wire_cursor_listeners(struct wlr_cursor *cursor) {
   return listeners;
 }
 
+void xdg_shell_new_toplevel(struct wl_listener *listener, void *data) {
+  struct wlr_pointer_axis_event *event = data;
+  jank_object_ref box_data = jank_box("wlr_xdg_toplevel*", event);
+  eval_callback1(&xdg_shell_new_toplevel_callback,
+                 "#'wonk.xdg-shell/new-toplevel", box_data, true);
+}
+
+void xdg_shell_new_popup(struct wl_listener *listener, void *data) {
+  eval_callback(&xdg_shell_new_popup_callback, "#'wonk.xdg-shell/new-toplevel",
+                true);
+}
+
+struct array_of_listeners *
+wire_xdg_shell_listeners(struct wlr_xdg_shell *shell) {
+  struct array_of_listeners *listeners = initialize_listeners(2);
+  listeners->the_listeners[0]->notify = xdg_shell_new_toplevel;
+  wl_signal_add(&shell->events.new_toplevel, listeners->the_listeners[0]);
+  listeners->the_listeners[1]->notify = xdg_shell_new_popup;
+  wl_signal_add(&shell->events.new_popup, listeners->the_listeners[1]);
+  return listeners;
+}
+
+void toplevel_surface_map(struct wl_listener *listener, void *data) {
+  // maybe return the listener to map to the toplevel???
+  eval_callback(&toplevel_surface_map_callback,
+                "#'wonk.xdg-shell/toplevel-surface-map", true);
+}
+
+void toplevel_surface_unmap(struct wl_listener *listener, void *data) {
+  // maybe return the listener to map to the toplevel???
+  eval_callback(&toplevel_surface_unmap_callback,
+                "#'wonk.xdg-shell/toplevel-surface-unmap", true);
+}
+
+void toplevel_surface_commit(struct wl_listener *listener, void *data) {
+  // maybe return the listener to map to the toplevel???
+  eval_callback(&toplevel_surface_commit_callback,
+                "#'wonk.xdg-shell/toplevel-surface-commit", true);
+}
+
+void toplevel_request_maximize(struct wl_listener *listener, void *data) {
+  // maybe return the listener to map to the toplevel???
+  eval_callback(&toplevel_request_maximize_callback,
+                "#'wonk.xdg-shell/toplevel-request-maximize", true);
+}
+
+void toplevel_request_fullscreen(struct wl_listener *listener, void *data) {
+  // maybe return the listener to map to the toplevel???
+  eval_callback(&toplevel_request_fullscreen_callback,
+                "#'wonk.xdg-shell/toplevel-request-fullscreen", true);
+}
+
+void toplevel_request_move(struct wl_listener *listener, void *data) {
+  // maybe return the listener to map to the toplevel???
+  eval_callback(&toplevel_request_move_callback,
+                "#'wonk.xdg-shell/toplevel-request-move", true);
+}
+
+void toplevel_request_resize(struct wl_listener *listener, void *data) {
+  // maybe return the listener to map to the toplevel???
+  eval_callback(&toplevel_request_resize_callback,
+                "#'wonk.xdg-shell/toplevel-request-resize", true);
+}
+
+void toplevel_destroy(struct wl_listener *listener, void *data) {
+  jank_object_ref data_box = jank_box("wl_listener*", listener);
+  eval_callback1(&toplevel_destroy_callback,
+                 "#'wonk.xdg-shell/toplevel-destroy", data_box, true);
+}
+
+struct array_of_listeners *
+wire_xdg_toplevel_listeners(struct wlr_xdg_toplevel *toplevel) {
+  struct array_of_listeners *listeners = initialize_listeners(8);
+  listeners->the_listeners[0]->notify = toplevel_surface_map;
+  wl_signal_add(&toplevel->base->surface->events.map,
+                listeners->the_listeners[0]);
+  listeners->the_listeners[1]->notify = toplevel_surface_unmap;
+  wl_signal_add(&toplevel->base->surface->events.unmap,
+                listeners->the_listeners[1]);
+  listeners->the_listeners[2]->notify = toplevel_surface_commit;
+  wl_signal_add(&toplevel->base->surface->events.commit,
+                listeners->the_listeners[2]);
+  listeners->the_listeners[3]->notify = toplevel_request_maximize;
+  wl_signal_add(&toplevel->events.request_maximize,
+                listeners->the_listeners[3]);
+  listeners->the_listeners[4]->notify = toplevel_request_fullscreen;
+  wl_signal_add(&toplevel->events.request_fullscreen,
+                listeners->the_listeners[4]);
+  listeners->the_listeners[5]->notify = toplevel_request_move;
+  wl_signal_add(&toplevel->events.request_move, listeners->the_listeners[5]);
+  listeners->the_listeners[6]->notify = toplevel_request_resize;
+  wl_signal_add(&toplevel->events.request_resize, listeners->the_listeners[6]);
+  listeners->the_listeners[7]->notify = toplevel_destroy;
+  wl_signal_add(&toplevel->events.destroy, listeners->the_listeners[7]);
+  return listeners;
+}
+
 void cleanup_listeners(struct array_of_listeners *listeners) {
   for (int i = 0; i < listeners->length; i++) {
     wl_list_remove(&listeners->the_listeners[i]->link);
@@ -242,7 +350,8 @@ output_get_primary_output_layout(struct wlr_output_layout *layout) {
       break;
     }
   }
-  // if we don't find 0, 0 then we're just returning the last configured output... :/
+  // if we don't find 0, 0 then we're just returning the last configured
+  // output... :/
   // TODO
   return layout_output;
 }

@@ -3,6 +3,7 @@
   (:require wonk.input)
   (:require [wonk.cursor :as cursor])
   (:require [wonk.state :as state])
+  (:require wonk.xdg-shell)
 ;;  (:require wonk.structs) maybe once StructMap is implmeneted?
   (:include "extern.hpp" 
             "callbacks.h"
@@ -28,6 +29,7 @@
                     scene (cpp/wlr_scene_create)
                     scene-layout (cpp/wlr_scene_attach_output_layout scene output-layout)
                     xdg-shell (cpp/wlr_xdg_shell_create display 3)
+                    shell-listeners (cpp/wire_xdg_shell_listeners xdg-shell)
                     cursor (cpp/wlr_cursor_create)
                     cursor-listeners (cpp/wire_cursor_listeners cursor)
                     ]
@@ -53,6 +55,8 @@
                               :keyboards (atom [])
                               :listeners (cpp/box listeners)
                               :cursor-listeners (cpp/box cursor-listeners)
+                              :shell-listeners (cpp/box shell-listeners)
+                              :toplevels (atom [])
                               })
                   (println "getting socket")
                   ;; TODO set up listener callbacks as well
@@ -88,6 +92,7 @@
   (println "cleaning up...")
   (cpp/cleanup_listeners (cpp/unbox (:* array_of_listeners) (:listeners @state/wm)))
   (cpp/cleanup_listeners (cpp/unbox (:* array_of_listeners) (:cursor-listeners @state/wm)))
+  (cpp/cleanup_listeners (cpp/unbox (:* array_of_listeners) (:shell-listeners @state/wm)))
   (cpp/wl_display_destroy_clients (cpp/unbox (:* cpp/wl_display) (:display @state/wm)))
   (cpp/wlr_xcursor_manager_destroy (cpp/unbox (:* cpp/wlr_xcursor_manager) (:cursor-manager @state/wm)))
   (cpp/wlr_cursor_destroy (cpp/unbox (:* cpp/wlr_cursor) (:cursor @state/wm)))

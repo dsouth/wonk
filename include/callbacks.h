@@ -27,6 +27,10 @@ bool is_listener_in_listeners(struct wl_listener *target,
                               struct wl_listener **listeners, int count);
 struct wlr_output_layout_output *
 output_get_primary_output_layout(struct wlr_output_layout *);
+struct array_of_listeners *wire_xdg_shell_listeners(struct wlr_xdg_shell *);
+struct array_of_listeners *
+wire_xdg_toplevel_listeners(struct wlr_xdg_toplevel *);
+
 #ifdef __cplusplus
 }
 #endif
