@@ -5,6 +5,18 @@
             "callbacks.h"
             "time.h"))
 
+(defn get-focused []
+  (let [outputs @(:outputs @state/wm)
+        o (first outputs)
+        r (rest outputs)
+        ]
+    (loop [o r]
+      (if (nil? o)
+        nil
+        (if (:focused o)
+          o
+          (recur (first r) (rest r)))))))
+
 (defn initialize-scene [o]
   (let [output (cpp/unbox (:* wlr_output) o)
         y 0

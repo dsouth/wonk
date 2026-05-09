@@ -1,5 +1,6 @@
 (ns wonk.xdg-shell
-  (:require [wonk.state :as state]))
+  (:require [wonk.state :as state])
+  (:require [wonk.output :as output]))
 
 (defn listener-pred [l i m]
   #(cpp/== (cpp/unbox (:* wl_listener) l)
@@ -42,11 +43,17 @@
   (let [toplevel (cpp/unbox (:* wlr_xdg_toplevel) t)
         ;; TODO box unboxing to get around codegen bug
         base (cpp/box (.-base toplevel))
-        scene-tree (cpp/wlr_scene_xdg_surface_create 
+        ;; TODO box unbox to get around codegen bug
+        s-t (cpp/box (cpp/wlr_scene_xdg_surface_create 
                      (cpp/& (.-tree (cpp/unbox (:* wlr_scene) (:scene @state/wm))))
-                     (.-base toplevel))
+                     (.-base toplevel)))
+        scene-tree (cpp/unbox (:* wlr_scene_tree) s-t)
+        toplevel-node (.-node scene-tree)
         ]
-    (cpp/= (.-data (.-node scene-tree)) 
+    (cpp/= (.-data toplevel-node) 
+           ;; TODO can we put a jank data structure here?
+           ;; for the time being just point the C
+           ;; pointer and map that back to our data strucure... :/
            (cpp/cast (:* void) toplevel))
     ;; TODO box unboxing to get around codegen bug
     (cpp/= (.-data (cpp/unbox (:* wlr_xdg_surface) base)) 
@@ -55,9 +62,17 @@
       (swap! (:toplevels @state/wm) conj {:wlr-refernece (cpp/box toplevel)
                                           :scene-tree (cpp/box scene-tree)
                                           :listeners listeners})
-    ;; TODO get focused output (implement it as well!)
-    ;; store toplevel state
-    )))
+      (let [o (output/get-focused)
+            background (cpp/unbox (:* wlr_scene_tree) (:background o))
+            ;; TODO box unbox to get around codegen bug
+            n (cpp/box (.-node background))
+            node (cpp/unbox (:* wlr_scene_nod) n)
+            x (+ (.-x node) state/margin)
+            y (+ (.-y node) state/margin)
+
+            ]
+        (cpp/wlr_scene_node_set_position
+          (cpp/& toplevel-node) x y)))))
 
 
 

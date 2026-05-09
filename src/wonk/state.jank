@@ -1,3 +1,6 @@
 (ns wonk.state)
 
 (def wm (atom {}))
+
+(def margin 
+  "Margin for toplevel apps" 10)
