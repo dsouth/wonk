@@ -6,11 +6,9 @@
             "time.h"))
 
 (defn get-focused []
-  (let [outputs @(:outputs @state/wm)
-        o (first outputs)
-        r (rest outputs)
-        ]
-    (loop [o r]
+  (let [outputs @(:outputs @state/wm)]
+    (loop [o (first outputs)
+           r (rest outputs)]
       (if (nil? o)
         nil
         (if (:focused o)
