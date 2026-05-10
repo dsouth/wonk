@@ -40,7 +40,7 @@
       (.-delta_y event))))
 
 (defn cursor-motion-absolute [e]
-  (println "cursor motion absolute"))
+  )
 
 (defn cursor-button [e]
   (println "cursor button"))
