@@ -64,6 +64,13 @@ void eval_callback2(jank_object_ref **ref, const char *name,
   jank_call2(*ref, arg1, arg2);
 }
 
+void callback1_with_listener(struct wl_listener *listener,
+                             jank_object_ref **callback,
+                             const char *jank_function_name) {
+  jank_object_ref data_box = jank_box("wl_listner*", listener);
+  eval_callback1(callback, jank_function_name, data_box, true);
+}
+
 void output_new(struct wl_listener *listener, void *data) {
   struct wlr_output *output = data;
   jank_object_ref box_output = jank_box("wlr_output*", output);
@@ -241,9 +248,8 @@ wire_xdg_shell_listeners(struct wlr_xdg_shell *shell) {
 }
 
 void toplevel_surface_map(struct wl_listener *listener, void *data) {
-  // maybe return the listener to map to the toplevel???
-  eval_callback(&toplevel_surface_map_callback,
-                "#'wonk.xdg-shell/toplevel-surface-map", true);
+  callback1_with_listener(listener, &toplevel_surface_map_callback,
+                          "#'wonk.xdg-shell/toplevel-surface-map");
 }
 
 void toplevel_surface_unmap(struct wl_listener *listener, void *data) {
@@ -253,9 +259,8 @@ void toplevel_surface_unmap(struct wl_listener *listener, void *data) {
 }
 
 void toplevel_surface_commit(struct wl_listener *listener, void *data) {
-  // maybe return the listener to map to the toplevel???
-  eval_callback(&toplevel_surface_commit_callback,
-                "#'wonk.xdg-shell/toplevel-surface-commit", true);
+  callback1_with_listener(listener, &toplevel_surface_commit_callback,
+                          "#'wonk.xdg-shell/toplevel-surface-commit");
 }
 
 void toplevel_request_maximize(struct wl_listener *listener, void *data) {
@@ -283,35 +288,40 @@ void toplevel_request_resize(struct wl_listener *listener, void *data) {
 }
 
 void toplevel_destroy(struct wl_listener *listener, void *data) {
-  jank_object_ref data_box = jank_box("wl_listener*", listener);
-  eval_callback1(&toplevel_destroy_callback,
-                 "#'wonk.xdg-shell/toplevel-destroy", data_box, true);
+  callback1_with_listener(listener, &toplevel_destroy_callback,
+                          "#'wonk.xdg-shell/toplevel-destroy");
 }
 
+// TODO constants for array indexes that are accessible from jank!
 struct array_of_listeners *
 wire_xdg_toplevel_listeners(struct wlr_xdg_toplevel *toplevel) {
-  struct array_of_listeners *listeners = initialize_listeners(8);
-  listeners->the_listeners[0]->notify = toplevel_surface_map;
+  struct array_of_listeners *listeners = initialize_listeners(TOPLEVEL_COUNT);
+  listeners->the_listeners[TOPLEVEL_MAP]->notify = toplevel_surface_map;
   wl_signal_add(&toplevel->base->surface->events.map,
-                listeners->the_listeners[0]);
-  listeners->the_listeners[1]->notify = toplevel_surface_unmap;
+                listeners->the_listeners[TOPLEVEL_MAP]);
+  listeners->the_listeners[TOPLEVEL_UNMAP]->notify = toplevel_surface_unmap;
   wl_signal_add(&toplevel->base->surface->events.unmap,
-                listeners->the_listeners[1]);
-  listeners->the_listeners[2]->notify = toplevel_surface_commit;
+                listeners->the_listeners[TOPLEVEL_UNMAP]);
+  listeners->the_listeners[TOPLEVEL_COMMIT]->notify = toplevel_surface_commit;
   wl_signal_add(&toplevel->base->surface->events.commit,
-                listeners->the_listeners[2]);
-  listeners->the_listeners[3]->notify = toplevel_request_maximize;
+                listeners->the_listeners[TOPLEVEL_COMMIT]);
+  listeners->the_listeners[TOPLEVEL_MAXIMIZE]->notify =
+      toplevel_request_maximize;
   wl_signal_add(&toplevel->events.request_maximize,
-                listeners->the_listeners[3]);
-  listeners->the_listeners[4]->notify = toplevel_request_fullscreen;
+                listeners->the_listeners[TOPLEVEL_MAXIMIZE]);
+  listeners->the_listeners[TOPLEVEL_FULLSCREEN]->notify =
+      toplevel_request_fullscreen;
   wl_signal_add(&toplevel->events.request_fullscreen,
-                listeners->the_listeners[4]);
-  listeners->the_listeners[5]->notify = toplevel_request_move;
-  wl_signal_add(&toplevel->events.request_move, listeners->the_listeners[5]);
-  listeners->the_listeners[6]->notify = toplevel_request_resize;
-  wl_signal_add(&toplevel->events.request_resize, listeners->the_listeners[6]);
-  listeners->the_listeners[7]->notify = toplevel_destroy;
-  wl_signal_add(&toplevel->events.destroy, listeners->the_listeners[7]);
+                listeners->the_listeners[TOPLEVEL_FULLSCREEN]);
+  listeners->the_listeners[TOPLEVEL_MOVE]->notify = toplevel_request_move;
+  wl_signal_add(&toplevel->events.request_move,
+                listeners->the_listeners[TOPLEVEL_MOVE]);
+  listeners->the_listeners[TOPLEVEL_RESIZE]->notify = toplevel_request_resize;
+  wl_signal_add(&toplevel->events.request_resize,
+                listeners->the_listeners[TOPLEVEL_RESIZE]);
+  listeners->the_listeners[TOPLEVEL_DESTROY]->notify = toplevel_destroy;
+  wl_signal_add(&toplevel->events.destroy,
+                listeners->the_listeners[TOPLEVEL_DESTROY]);
   return listeners;
 }
 

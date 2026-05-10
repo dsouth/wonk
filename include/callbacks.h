@@ -7,6 +7,18 @@
 extern "C" {
 #endif
 
+enum {
+  TOPLEVEL_MAP,
+  TOPLEVEL_UNMAP,
+  TOPLEVEL_COMMIT,
+  TOPLEVEL_MAXIMIZE,
+  TOPLEVEL_FULLSCREEN,
+  TOPLEVEL_MOVE,
+  TOPLEVEL_RESIZE,
+  TOPLEVEL_DESTROY,
+  TOPLEVEL_COUNT
+};
+
 struct array_of_listeners {
   int length;
   struct wl_listener **the_listeners;
@@ -18,7 +30,9 @@ struct array_of_listeners *wire_output_listeners(struct wlr_output *);
 struct array_of_listeners *wire_keyboard_listeners(struct wlr_input_device *,
                                                    struct wlr_keyboard *);
 struct array_of_listeners *wire_cursor_listeners(struct wlr_cursor *);
-struct array_of_listeners *wire_cursor_listeners(struct wlr_cursor *);
+struct array_of_listeners *wire_xdg_shell_listeners(struct wlr_xdg_shell *);
+struct array_of_listeners *
+wire_xdg_toplevel_listeners(struct wlr_xdg_toplevel *);
 
 // TODO These two should go when aget is fully implemented!
 xkb_keysym_t get_sym_at_index(const xkb_keysym_t *, int);
@@ -27,10 +41,6 @@ bool is_listener_in_listeners(struct wl_listener *target,
                               struct wl_listener **listeners, int count);
 struct wlr_output_layout_output *
 output_get_primary_output_layout(struct wlr_output_layout *);
-struct array_of_listeners *wire_xdg_shell_listeners(struct wlr_xdg_shell *);
-struct array_of_listeners *
-wire_xdg_toplevel_listeners(struct wlr_xdg_toplevel *);
-
 #ifdef __cplusplus
 }
 #endif
