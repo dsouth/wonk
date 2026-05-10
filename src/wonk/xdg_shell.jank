@@ -84,14 +84,28 @@
                  seat surface (.-keycodes keyboard)
                  (.-num_keycodes keyboard) (cpp/& (.-modifiers keyboard))))))))))
 
-(defn toplevel-surface-map []
-  (println "toplevel surface map"))
+(defn toplevel-surface-map [l]
+  (focus (get-state l cpp/TOPLEVEL_MAP)))
 
 (defn toplevel-surface-unmap []
+  ;; TODO figure out if and why this is needed?
   (println "toplevel surface unmap"))
 
-(defn toplevel-surface-commit []
-  (println "toplevel surface commit"))
+(defn toplevel-surface-commit [l]
+ (let [output (output/get-focused)
+       width (#cpp int)
+       height (#cpp int)
+       output-reference (cpp/unbox (:* wlr_output) (:wlr-reference output))
+       toplevel-reference (cpp/unbox (:* wlr_xdg_toplevel) (:wlr-reference (get-state l cpp/TOPLEVEL_COMMIT)))
+      ] 
+   (cpp/wlr_output_effective_resolution 
+     output-reference
+     (cpp/& width)
+     (cpp/& height))
+   (cpp/wlr_xdg_toplevel_set_size 
+     toplevel-reference 
+     (- width (* 2 state/margin))
+     (- height (* 2 state/margin)))))
 
 (defn toplevel-request-maximize []
   (println "toplevel request maximize"))
@@ -107,9 +121,9 @@
 
 (defn toplevel-destroy [l]
   ;; destroy listener is hard coded to be the 8th listener (index 7)
-  (cpp/cleanup_listeners (cpp/unbox (:* array_of_listeners) (:listeners (get-state l 7))))
+  (cpp/cleanup_listeners (cpp/unbox (:* array_of_listeners) (:listeners (get-state l cpp/TOPLEVEL_DESTROY))))
   (swap! (:toplevels @state/wm)
-         (fn [v] (vec (remove (partial listener-pred l 7) v)))))
+         (fn [v] (vec (remove (partial listener-pred l cpp/TOPLEVEL_DESTROY) v)))))
 
 (defn new-toplevel [t]
   (let [toplevel (cpp/unbox (:* wlr_xdg_toplevel) t)
