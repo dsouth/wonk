@@ -59,7 +59,6 @@
                                     :toplevels (atom [])
                                     })
                   (println "getting socket")
-                  ;; TODO set up listener callbacks as well
                   (let [socket (cpp/wl_display_add_socket_auto display)]
                     (if (not (= socket 0))
                       (if (not (= (cpp/wlr_backend_start backend) 0))
