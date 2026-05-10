@@ -12,6 +12,78 @@
   (first (filter (partial listener-pred l i) 
                  @(:toplevels @state/wm))))
 
+(defn toplevel-at [x y surface px py]
+  (let [x (cpp/cast cpp/int x)
+        y (cpp/cast cpp/int y)
+        px (cpp/unbox (:* double) px)
+        py (cpp/unbox (:* double) py)
+        scene (cpp/unbox (:* wlr_scene) (:scene @state/wm))
+        tree (.-tree scene)
+        node (cpp/wlr_scene_node_at (cpp/& (.-node tree))
+                                    x y px py)
+        ]
+    (if (not (and (cpp/== cpp/nullptr node)
+                  (cpp/!= (.-type node) cpp/WLR_SCENE_NODE_BUFFER)))
+      (do
+        (let [scene-buffer (cpp/wlr_scene_buffer_from_node node)
+              scene-surface (cpp/wlr_scene_surface_try_from_buffer scene-buffer)
+              ]
+          (if (cpp/!= cpp/nullptr scene-surface)
+            (do
+              (cpp/= (:* (cpp/unbox (:* (:* wlr_surface)) surface)) (.-surface scene-surface))
+              (let [tree (.-parent node)
+                    res (#cpp (:* void))
+                   ]
+                (loop [tree tree]
+                  (let [node (.-node tree)]
+                    (if (and (cpp/!= cpp/nullptr tree)
+                             (cpp/!= cpp/nullptr (.-data node)))
+                      (do
+                        (cpp/= res (.-data node))
+                        nil
+                        )
+                      (if (cpp/== cpp/nullptr tree)
+                        nil
+                        (recur (.-parent node))))))
+                (cpp/box res)))
+            (cpp/box cpp/jank_null))))
+      (cpp/box cpp/jank_null))))
+
+(defn toplevel_at_cursor [c s x y]
+  (let [cursor (cpp/unbox (:* wlr_cursor) c)]
+    (toplevel-at (.-x cursor) (.-y cursor) s x y)))
+
+;; should be passing in a map, not the atom?!?!?!
+(defn focus [toplevel-state]
+  (if (not (empty? toplevel-state))
+    (let [seat (cpp/unbox (:* wlr_seat) (:seat @state/wm))
+          keyboard-state (.-keyboard_state seat)
+          previous-surface (.-focused_surface keyboard-state)
+          wlr-toplevel (cpp/unbox (:* wlr_xdg_toplevel) (:wlr-reference toplevel-state))
+          base (.-base wlr-toplevel)
+          surface (.-surface base)
+          ]
+      (if (cpp/!= previous-surface surface)
+        (do
+           (if (cpp/!= cpp/nullptr previous-surface)
+             (let [previous-toplevel (cpp/wlr_xdg_toplevel_try_from_wlr_surface previous-surface)]
+               (if (cpp/!= cpp/nullptr previous-toplevel)
+                 (cpp/wlr_xdg_toplevel_set_activated previous-toplevel false))))
+           (let [keyboard (cpp/wlr_seat_get_keyboard seat)
+                 scene-tree (cpp/unbox (:* wlr_scene_tree) (:scene-tree toplevel-state))
+                 node (.-node scene-tree)
+                 ]
+             (cpp/wlr_scene_node_raise_to_top (cpp/& node))
+             ;; place toplevel being focused at front of vector
+             (swap! (:toplevels @state/wm) 
+                                                                ;;;????????
+                    (fn [v] (vec (reverse (conj (remove (fn [m] (= toplevel-state m)) v)
+                                                toplevel-state)))))
+             (if (cpp/!= cpp/nullptr keyboard)
+               (cpp/wlr_seat_keyboard_notify_enter
+                 seat surface (.-keycodes keyboard)
+                 (.-num_keycodes keyboard) (cpp/& (.-modifiers keyboard))))))))))
+
 (defn toplevel-surface-map []
   (println "toplevel surface map"))
 
@@ -41,13 +113,10 @@
 
 (defn new-toplevel [t]
   (let [toplevel (cpp/unbox (:* wlr_xdg_toplevel) t)
-        ;; TODO box unboxing to get around codegen bug
-        base (cpp/box (.-base toplevel))
-        ;; TODO box unbox to get around codegen bug
-        s-t (cpp/box (cpp/wlr_scene_xdg_surface_create 
+        base (.-base toplevel)
+        scene-tree (cpp/wlr_scene_xdg_surface_create 
                      (cpp/& (.-tree (cpp/unbox (:* wlr_scene) (:scene @state/wm))))
-                     (.-base toplevel)))
-        scene-tree (cpp/unbox (:* wlr_scene_tree) s-t)
+                     (.-base toplevel))
         toplevel-node (.-node scene-tree)
         ]
     (cpp/= (.-data toplevel-node) 
@@ -55,8 +124,7 @@
            ;; for the time being just point the C
            ;; pointer and map that back to our data strucure... :/
            (cpp/cast (:* void) toplevel))
-    ;; TODO box unboxing to get around codegen bug
-    (cpp/= (.-data (cpp/unbox (:* wlr_xdg_surface) base)) 
+    (cpp/= (.-data base) 
            (cpp/cast (:* void) scene-tree))
     (let [listeners (cpp/wire_xdg_toplevel_listeners toplevel)]
       (swap! (:toplevels @state/wm) conj {:wlr-refernece (cpp/box toplevel)
@@ -64,16 +132,10 @@
                                           :listeners listeners})
       (let [o (output/get-focused)
             background (cpp/unbox (:* wlr_scene_tree) (:background o))
-            ;; TODO box unbox to get around codegen bug
-            n (cpp/box (.-node background))
-            node (cpp/unbox (:* wlr_scene_nod) n)
+            node (.-node background)
             x (+ (.-x node) state/margin)
             y (+ (.-y node) state/margin)
 
             ]
         (cpp/wlr_scene_node_set_position
           (cpp/& toplevel-node) x y)))))
-
-
-
-
