@@ -1,91 +1,90 @@
 (ns wonk.main
-  (:require wonk.output)
+  (:require [wonk.output :as output])
   (:require wonk.input)
   (:require [wonk.cursor :as cursor])
   (:require [wonk.state :as state])
   (:require wonk.xdg-shell)
 ;;  (:require wonk.structs) maybe once StructMap is implmeneted?
-  (:include "extern.hpp" 
+  (:include "extern.hpp"
             "callbacks.h"
-            "wayland-server-core.h"
-))
+            "wayland-server-core.h"))
 
 (defn init []
   (let [display (cpp/wl_display_create)
         session (#cpp (:* wlr_session))
         backend (cpp/wlr_backend_autocreate
                  (cpp/wl_display_get_event_loop display)
-                 (cpp/& session))
-        ]
-  (if (not (cpp/== cpp/nullptr backend))
-    (let [renderer (cpp/wlr_renderer_autocreate backend)]
-      (if (not (cpp/== cpp/nullptr renderer))
-        (let [allocator (cpp/wlr_allocator_autocreate backend renderer)]
-          (if (not (cpp/== cpp/nullptr allocator))
-            (let [compositor (cpp/wlr_compositor_create display 5 renderer)]
-              (cpp/wlr_subcompositor_create display)
-              (cpp/wlr_data_device_manager_create display)
-              (let [output-layout (cpp/wlr_output_layout_create display)
-                    scene (cpp/wlr_scene_create)
-                    scene-layout (cpp/wlr_scene_attach_output_layout scene output-layout)
-                    xdg-shell (cpp/wlr_xdg_shell_create display 3)
-                    shell-listeners (cpp/wire_xdg_shell_listeners xdg-shell)
-                    cursor (cpp/wlr_cursor_create)
-                    cursor-listeners (cpp/wire_cursor_listeners cursor)
-                    ]
-                (cpp/wlr_cursor_attach_output_layout cursor output-layout)
-                (let [cursor-manager (cpp/wlr_xcursor_manager_create cpp/nullptr 24)
-                      seat (cpp/wlr_seat_create display "seat0")
-                      listeners (cpp/wire_backend_listeners backend)]
-                  (reset! state/wm {:display (cpp/box display)
-                                    :session (cpp/box session)
-                                    :backend (cpp/box backend)
-                                    :renderer (cpp/box renderer)
-                                    :allocator (cpp/box allocator)
-                                    :compositor (cpp/box compositor)
-                                    :output-layout (cpp/box output-layout)
-                                    :scene (cpp/box scene)
-                                    :scene-layout (cpp/box scene-layout)
-                                    :xdg-shell (cpp/box xdg-shell)
-                                    :cursor (cpp/box cursor)
-                                    :cursor-manager (cpp/box cursor-manager)
-                                    :seat (cpp/box seat)
-                                    :input-mode false
-                                    :outputs (atom [])
-                                    :keyboards (atom [])
-                                    :listeners (cpp/box listeners)
-                                    :cursor-listeners (cpp/box cursor-listeners)
-                                    :shell-listeners (cpp/box shell-listeners)
-                                    :toplevels (atom [])
-                                    })
-                  (println "getting socket")
-                  (let [socket (cpp/wl_display_add_socket_auto display)]
-                    (if (not (= socket 0))
-                      (if (not (= (cpp/wlr_backend_start backend) 0))
-                        (do
-                          (println "backed started")
-                          (cpp/setenv "WAYLAND_DISPLAY" socket 1) ;;1 is true :/
-                          ;; better to box again or access wm state?
-                          (cursor/center-on-primary-monitor 
-                            (:cursor @state/wm) (:output-layout @state/wm))
-                          (cpp/wlr_cursor_set_xcursor cursor cursor-manager "default")
-                         true)
-                        (do 
-                          ;;could not start backend
-                          (println "backend NOT started")
-                          false))
-                      (do
+                 (cpp/& session))]
+    (if (not (cpp/== cpp/nullptr backend))
+      (let [renderer (cpp/wlr_renderer_autocreate backend)]
+        (if (not (cpp/== cpp/nullptr renderer))
+          (do
+            (cpp/wlr_renderer_init_wl_display renderer display)
+            (let [allocator (cpp/wlr_allocator_autocreate backend renderer)]
+              (if (not (cpp/== cpp/nullptr allocator))
+                (let [compositor (cpp/wlr_compositor_create display 5 renderer)]
+                  (cpp/wlr_subcompositor_create display)
+                  (cpp/wlr_data_device_manager_create display)
+                  (let [output-layout (cpp/wlr_output_layout_create display)
+                        scene (cpp/wlr_scene_create)
+                        scene-layout (cpp/wlr_scene_attach_output_layout scene output-layout)
+                        xdg-shell (cpp/wlr_xdg_shell_create display 3)
+                        shell-listeners (cpp/wire_xdg_shell_listeners xdg-shell)
+                        cursor (cpp/wlr_cursor_create)
+                        cursor-listeners (cpp/wire_cursor_listeners cursor)]
+                    (cpp/wlr_cursor_attach_output_layout cursor output-layout)
+                    (let [cursor-manager (cpp/wlr_xcursor_manager_create cpp/nullptr 24)
+                          seat (cpp/wlr_seat_create display "seat0")
+                          listeners (cpp/wire_backend_listeners backend)]
+                      (reset! state/wm {:display (cpp/box display)
+                                        :session (cpp/box session)
+                                        :backend (cpp/box backend)
+                                        :renderer (cpp/box renderer)
+                                        :allocator (cpp/box allocator)
+                                        :compositor (cpp/box compositor)
+                                        :output-layout (cpp/box output-layout)
+                                        :scene (cpp/box scene)
+                                        :scene-layout (cpp/box scene-layout)
+                                        :xdg-shell (cpp/box xdg-shell)
+                                        :cursor (cpp/box cursor)
+                                        :cursor-manager (cpp/box cursor-manager)
+                                        :seat (cpp/box seat)
+                                        :input-mode false
+                                        :outputs (atom [])
+                                        :keyboards (atom [])
+                                        :listeners (cpp/box listeners)
+                                        :cursor-listeners (cpp/box cursor-listeners)
+                                        :shell-listeners (cpp/box shell-listeners)
+                                        :toplevels (atom [])})
+                      (println "getting socket")
+                      (let [socket (cpp/wl_display_add_socket_auto display)]
+                        (if (not (= socket 0))
+                          (if (not (= (cpp/wlr_backend_start backend) 0))
+                            (do
+                              (println "backend started")
+                              (cpp/setenv "WAYLAND_DISPLAY" socket 1) ;;1 is true :/
+                            ;; better to box again or access wm state?
+                              (cursor/center-on-primary-monitor
+                               (:cursor @state/wm) (:output-layout @state/wm))
+                              (output/focus (output/get-primary))
+                              (cpp/wlr_cursor_set_xcursor cursor cursor-manager "default")
+                              true)
+                            (do
+                            ;;could not start backend
+                              (println "backend NOT started")
+                              false))
+                          (do
                         ;;could not create wayland socket
-                        false))))))
-            (do
+                            false))))))
+                (do
 ;;              (cpp/wlr_log cpp/WLR_ERROR "failed to autocreate allocator")
-              false)))
-        (do
+                  false))))
+          (do
 ;;          (cpp/wlr_log cpp/WLR_ERROR "failed to autocreate renderer")
-          false)))
-    (do
+            false)))
+      (do
 ;;      (cpp/wlr_log cpp/WLR_ERROR "failed to autocreate backend")
-      false))))
+        false))))
 
 (defn cleanup []
   (println "cleaning up...")
@@ -98,8 +97,7 @@
   (cpp/wlr_allocator_destroy (cpp/unbox (:* cpp/wlr_allocator) (:allocator @state/wm)))
   (cpp/wlr_renderer_destroy (cpp/unbox (:* cpp/wlr_renderer) (:renderer @state/wm)))
   (cpp/wlr_backend_destroy (cpp/unbox (:* cpp/wlr_backend) (:backend @state/wm)))
-  (cpp/wl_display_destroy (cpp/unbox (:* cpp/wl_display) (:display @state/wm)))
-)
+  (cpp/wl_display_destroy (cpp/unbox (:* cpp/wl_display) (:display @state/wm))))
 
 (defn -main [& args]
 ;;  (callback)
@@ -107,8 +105,6 @@
   (cpp/wlr_log_init cpp/WLR_DEBUG cpp/nullptr)
 ;;  (cpp/wlr_log cpp/WLR_DEBUG "starting up...")
   (if (init)
-    (cpp/wl_display_run (cpp/unbox (:* wl_display) (:display @state/wm)))
-    (println "oopsie"))
-  (cleanup)
- )
+    (cpp/wl_display_run (cpp/unbox (:* wl_display) (:display @state/wm))))
+  (cleanup))
 
