@@ -5,15 +5,48 @@
             "callbacks.h"
             "time.h"))
 
+(defn focus [output]
+  (println "focus output called")
+  (println output)
+  (swap! (:outputs @state/wm)
+         (fn [outputs]
+           (vec (map (fn [m]
+                       (if (= m output)
+                         (assoc m :focused true)
+                         (if (:focused m)
+                           (assoc m :focused false)
+                           m)))
+                     outputs)))))
+
 (defn get-focused []
+  (println "get focused output")
   (let [outputs @(:outputs @state/wm)]
-    (loop [o (first outputs)
-           r (rest outputs)]
-      (if (nil? o)
+    (let [res (loop [o (first outputs)
+                     r (rest outputs)]
+                (if (nil? o)
+                  nil
+                  (if (:focused o)
+                    o
+                    (recur (first r) (rest r)))))]
+      (println "focused output is" res)
+      res)))
+
+(defn get-primary []
+  ;; TODO deal with atom here somehow?!? or
+  ;; right a function that deals with flipping
+  ;; focused outputs in the output namespace
+  (let [output-layout (cpp/unbox (:* wlr_output_layout)
+                                 (:output-layout @state/wm))
+        layout-output (cpp/output_get_primary_output_layout output-layout)
+        output-reference (.-output layout-output)]
+    (loop [output (first @(:outputs @state/wm))
+           outputs (rest @(:outputs @state/wm))]
+      (if (nil? output)
         nil
-        (if (:focused o)
-          o
-          (recur (first r) (rest r)))))))
+        (if (cpp/== output-reference
+                    (cpp/unbox (:* wlr_output) (:wlr-reference output)))
+          output
+          (recur (first outputs) (rest outputs)))))))
 
 (defn initialize-scene [o]
   (let [output (cpp/unbox (:* wlr_output) o)
@@ -23,30 +56,27 @@
             1920 0)
         width (#cpp int)
         height (#cpp int)
-        background-scene-tree (cpp/wlr_scene_tree_create 
-                                  (cpp/& (.-tree 
-                                            (cpp/unbox (:* wlr_scene) (:scene @state/wm)))))
-        ]
+        background-scene-tree (cpp/wlr_scene_tree_create
+                               (cpp/& (.-tree
+                                       (cpp/unbox (:* wlr_scene) (:scene @state/wm)))))]
     (cpp/wlr_output_effective_resolution output (cpp/& width) (cpp/& height))
     (cpp/wlr_scene_rect_create background-scene-tree width height cpp/black)
     (cpp/wlr_scene_node_set_position (cpp/& (.-node background-scene-tree)) x y)
-    (let [layout-output (cpp/wlr_output_layout_add 
-                          (cpp/unbox (:* wlr_output_layout) (:output-layout @state/wm))
-                          output x y)
-          scene-output (cpp/wlr_scene_output_create 
-                         (cpp/unbox (:* wlr_scene) (:scene @state/wm))
-                         output)
-          ]
+    (let [layout-output (cpp/wlr_output_layout_add
+                         (cpp/unbox (:* wlr_output_layout) (:output-layout @state/wm))
+                         output x y)
+          scene-output (cpp/wlr_scene_output_create
+                        (cpp/unbox (:* wlr_scene) (:scene @state/wm))
+                        output)]
       (cpp/wlr_scene_output_layout_add_output (cpp/unbox (:* wlr_scene_output_layout) (:scene-layout @state/wm))
                                               layout-output
                                               scene-output))
     (let [output-state {:wlr-reference o
                         :background (cpp/box background-scene-tree)
-                        :focused false
-                        }
+                        :focused false}
           outputs (:outputs @state/wm)]
       (swap! outputs conj output-state))))
-    
+
 (defn new-callback [o]
   (let [output (cpp/unbox (:* wlr_output) o)
         listeners (cpp/wire_output_listeners output)]
@@ -65,7 +95,7 @@
       (initialize-scene o))
     ;; :outputs should already be populated by the call to 
     ;; (initialize-scene)...
-    (swap! (:outputs @state/wm) 
+    (swap! (:outputs @state/wm)
            (fn [v]
              ;; didn't seem to need to box here, but doing it all the same...
              (update v (dec (count v)) assoc :listeners (cpp/box listeners))))))
@@ -73,13 +103,11 @@
 (defn frame-callback [o]
   (let [output (cpp/unbox (:* wlr_output) o)
         scene (cpp/unbox (:* wlr_scene) (:scene @state/wm))
-        scene-output (cpp/wlr_scene_get_scene_output scene output)
-        ]
+        scene-output (cpp/wlr_scene_get_scene_output scene output)]
     (cpp/wlr_scene_output_commit scene-output cpp/nullptr)
     (let [now (#cpp timespec)]
       (cpp/clock_gettime cpp/CLOCK_MONOTONIC (cpp/& now))
       (cpp/wlr_scene_output_send_frame_done scene-output (cpp/& now)))))
-
 
 (defn request-state-callback []
   (println "-- output request state called"))
@@ -91,8 +119,7 @@
 (defn destroy-callback [o]
   (let [p (partial output-pred o)
         ;; first find the output state to remove the listeners...
-        state (first (filter p @(:outputs @state/wm)))
-        ]
+        state (first (filter p @(:outputs @state/wm)))]
     (cpp/cleanup_listeners (cpp/unbox (:* array_of_listeners) (:listeners state)))
         ;; then remove the output state
     (swap! (:outputs @state/wm)
