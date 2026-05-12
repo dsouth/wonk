@@ -5,6 +5,7 @@
 #include <wayland-server.h>
 #include <wayland-util.h>
 #include <wlr/backend.h>
+#include <wlr/util/log.h>
 #include <wlr/types/wlr_cursor.h>
 #include <wlr/types/wlr_keyboard.h>
 #include <wlr/types/wlr_xdg_shell.h>
@@ -239,6 +240,7 @@ void xdg_shell_new_popup(struct wl_listener *listener, void *data) {
 
 struct array_of_listeners *
 wire_xdg_shell_listeners(struct wlr_xdg_shell *shell) {
+  wlr_log(WLR_DEBUG, "wiring listeners for xdg shell...");
   struct array_of_listeners *listeners = initialize_listeners(2);
   listeners->the_listeners[0]->notify = xdg_shell_new_toplevel;
   wl_signal_add(&shell->events.new_toplevel, listeners->the_listeners[0]);
@@ -369,5 +371,6 @@ output_get_primary_output_layout(struct wlr_output_layout *layout) {
 // this is also because we used a function that used aget to figure this out
 struct wl_listener *get_listener_pointer_at_index(struct wl_listener **wl,
                                                   int index) {
+  printf("get_listener_pointer at index called with index %d\n", index);
   return wl[index];
 }

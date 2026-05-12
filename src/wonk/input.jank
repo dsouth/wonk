@@ -3,7 +3,19 @@
   (:include "extern.hpp"
             "callbacks.h"
             "xkbcommon/xkbcommon-keysyms.h"
-            "xkbcommon/xkbcommon.h"))
+            "xkbcommon/xkbcommon.h"
+            "unistd.h"))
+
+(defn spawn-command [cmd]
+  (println "spawning command" cmd)
+  (if (= (cpp/fork) 0)
+    (do
+      (cpp/setsid)
+      (cpp/execl (cpp/cast (:* char) "/bin/sh")
+                 (cpp/cast (:* char) "/bin/sh")
+                 (cpp/cast (:* char) "-c")
+                 (cpp/cast (:* char) cmd) 
+                 cpp/nullptr))))
 
 (defn is-target-in-vec? [target array length index]
   (let [unboxed-target (cpp/unbox (:* wl_listener) target)]
@@ -46,6 +58,11 @@
         (cond 
           (cpp/== cpp/XKB_KEY_Escape key-sym)
             (cpp/wl_display_terminate (cpp/unbox (:* wl_display) (:display @state/wm)))
+          (cpp/== cpp/XKB_KEY_Return key-sym)
+            (do
+              (println "attempt to spawn...")
+              (spawn-command "foot")
+              )
           :else nil))
         (if (< sym-size index)
           (recur (inc index))))))

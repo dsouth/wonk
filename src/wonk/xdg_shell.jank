@@ -5,12 +5,16 @@
 (defn listener-pred [l i m]
   #(cpp/== (cpp/unbox (:* wl_listener) l)
            (cpp/get_listener_pointer_at_index
-               (.-the_listeners (cpp/unbox (:* array_of_listeners) (:listeners m)))
-               i)))
+            (.-the_listeners (cpp/unbox (:* array_of_listeners) (:listeners m)))
+            i)))
 
 (defn get-state [l i]
-  (first (filter (partial listener-pred l i) 
-                 @(:toplevels @state/wm))))
+  (println "-- get-state called" i)
+  (println @state/wm)
+  (let [res (first (filter (partial listener-pred l i)
+                           @(:toplevels @state/wm)))]
+    (println "get state is" res)
+    res))
 
 (defn toplevel-at [x y surface px py]
   (let [x (cpp/cast cpp/int x)
@@ -20,28 +24,24 @@
         scene (cpp/unbox (:* wlr_scene) (:scene @state/wm))
         tree (.-tree scene)
         node (cpp/wlr_scene_node_at (cpp/& (.-node tree))
-                                    x y px py)
-        ]
+                                    x y px py)]
     (if (not (and (cpp/== cpp/nullptr node)
                   (cpp/!= (.-type node) cpp/WLR_SCENE_NODE_BUFFER)))
       (do
         (let [scene-buffer (cpp/wlr_scene_buffer_from_node node)
-              scene-surface (cpp/wlr_scene_surface_try_from_buffer scene-buffer)
-              ]
+              scene-surface (cpp/wlr_scene_surface_try_from_buffer scene-buffer)]
           (if (cpp/!= cpp/nullptr scene-surface)
             (do
               (cpp/= (:* (cpp/unbox (:* (:* wlr_surface)) surface)) (.-surface scene-surface))
               (let [tree (.-parent node)
-                    res (#cpp (:* void))
-                   ]
+                    res (#cpp (:* void))]
                 (loop [tree tree]
                   (let [node (.-node tree)]
                     (if (and (cpp/!= cpp/nullptr tree)
                              (cpp/!= cpp/nullptr (.-data node)))
                       (do
                         (cpp/= res (.-data node))
-                        nil
-                        )
+                        nil)
                       (if (cpp/== cpp/nullptr tree)
                         nil
                         (recur (.-parent node))))))
@@ -61,51 +61,56 @@
           previous-surface (.-focused_surface keyboard-state)
           wlr-toplevel (cpp/unbox (:* wlr_xdg_toplevel) (:wlr-reference toplevel-state))
           base (.-base wlr-toplevel)
-          surface (.-surface base)
-          ]
+          surface (.-surface base)]
       (if (cpp/!= previous-surface surface)
         (do
-           (if (cpp/!= cpp/nullptr previous-surface)
-             (let [previous-toplevel (cpp/wlr_xdg_toplevel_try_from_wlr_surface previous-surface)]
-               (if (cpp/!= cpp/nullptr previous-toplevel)
-                 (cpp/wlr_xdg_toplevel_set_activated previous-toplevel false))))
-           (let [keyboard (cpp/wlr_seat_get_keyboard seat)
-                 scene-tree (cpp/unbox (:* wlr_scene_tree) (:scene-tree toplevel-state))
-                 node (.-node scene-tree)
-                 ]
-             (cpp/wlr_scene_node_raise_to_top (cpp/& node))
+          (if (cpp/!= cpp/nullptr previous-surface)
+            (let [previous-toplevel (cpp/wlr_xdg_toplevel_try_from_wlr_surface previous-surface)]
+              (if (cpp/!= cpp/nullptr previous-toplevel)
+                (cpp/wlr_xdg_toplevel_set_activated previous-toplevel false))))
+          (let [keyboard (cpp/wlr_seat_get_keyboard seat)
+                scene-tree (cpp/unbox (:* wlr_scene_tree) (:scene-tree toplevel-state))
+                node (.-node scene-tree)]
+            (cpp/wlr_scene_node_raise_to_top (cpp/& node))
              ;; place toplevel being focused at front of vector
-             (swap! (:toplevels @state/wm) 
+            (swap! (:toplevels @state/wm)
                                                                 ;;;????????
-                    (fn [v] (vec (reverse (conj (remove (fn [m] (= toplevel-state m)) v)
-                                                toplevel-state)))))
-             (if (cpp/!= cpp/nullptr keyboard)
-               (cpp/wlr_seat_keyboard_notify_enter
-                 seat surface (.-keycodes keyboard)
-                 (.-num_keycodes keyboard) (cpp/& (.-modifiers keyboard))))))))))
+                   (fn [v] (vec (reverse (conj (remove (fn [m] (= toplevel-state m)) v)
+                                               toplevel-state)))))
+            (if (cpp/!= cpp/nullptr keyboard)
+              (cpp/wlr_seat_keyboard_notify_enter
+               seat surface (.-keycodes keyboard)
+               (.-num_keycodes keyboard) (cpp/& (.-modifiers keyboard))))))))))
 
 (defn toplevel-surface-map [l]
-  (focus (get-state l cpp/TOPLEVEL_MAP)))
+  (println "toplevel surface map")
+  (focus (get-state l 0)))
 
 (defn toplevel-surface-unmap []
   ;; TODO figure out if and why this is needed?
   (println "toplevel surface unmap"))
 
 (defn toplevel-surface-commit [l]
- (let [output (output/get-focused)
-       width (#cpp int)
-       height (#cpp int)
-       output-reference (cpp/unbox (:* wlr_output) (:wlr-reference output))
-       toplevel-reference (cpp/unbox (:* wlr_xdg_toplevel) (:wlr-reference (get-state l cpp/TOPLEVEL_COMMIT)))
-      ] 
-   (cpp/wlr_output_effective_resolution 
-     output-reference
-     (cpp/& width)
-     (cpp/& height))
-   (cpp/wlr_xdg_toplevel_set_size 
-     toplevel-reference 
-     (- width (* 2 state/margin))
-     (- height (* 2 state/margin)))))
+  (println "toplevel surface commit" l)
+  (let [toplevel-reference (cpp/unbox
+                            (:* wlr_xdg_toplevel)
+                            (:wlr-reference (get-state l 2)))]
+    (println 1)
+    (if (.-initial_commit (.-base toplevel-reference))
+      (let [output (output/get-focused)
+            width (#cpp int)
+            height (#cpp int)
+            output-reference (cpp/unbox (:* wlr_output) (:wlr-reference output))]
+        (println 2)
+        (cpp/wlr_output_effective_resolution
+         output-reference
+         (cpp/& width)
+         (cpp/& height))
+        (println 3)
+        (cpp/wlr_xdg_toplevel_set_size
+         toplevel-reference
+         (- width (* 2 state/margin))
+         (- height (* 2 state/margin)))))))
 
 (defn toplevel-request-maximize []
   (println "toplevel request maximize"))
@@ -120,36 +125,37 @@
   (println "toplevel request resize"))
 
 (defn toplevel-destroy [l]
-  ;; destroy listener is hard coded to be the 8th listener (index 7)
   (cpp/cleanup_listeners (cpp/unbox (:* array_of_listeners) (:listeners (get-state l cpp/TOPLEVEL_DESTROY))))
   (swap! (:toplevels @state/wm)
          (fn [v] (vec (remove (partial listener-pred l cpp/TOPLEVEL_DESTROY) v)))))
 
 (defn new-toplevel [t]
+  (println "--- NEW toplevel")
   (let [toplevel (cpp/unbox (:* wlr_xdg_toplevel) t)
         base (.-base toplevel)
-        scene-tree (cpp/wlr_scene_xdg_surface_create 
-                     (cpp/& (.-tree (cpp/unbox (:* wlr_scene) (:scene @state/wm))))
-                     (.-base toplevel))
-        toplevel-node (.-node scene-tree)
-        ]
-    (cpp/= (.-data toplevel-node) 
+        scene-tree (cpp/wlr_scene_xdg_surface_create
+                    (cpp/& (.-tree (cpp/unbox (:* wlr_scene) (:scene @state/wm))))
+                    (.-base toplevel))
+        toplevel-node (.-node scene-tree)]
+    (cpp/= (.-data toplevel-node)
            ;; TODO can we put a jank data structure here?
            ;; for the time being just point the C
            ;; pointer and map that back to our data strucure... :/
            (cpp/cast (:* void) toplevel))
-    (cpp/= (.-data base) 
+    (cpp/= (.-data base)
            (cpp/cast (:* void) scene-tree))
     (let [listeners (cpp/wire_xdg_toplevel_listeners toplevel)]
-      (swap! (:toplevels @state/wm) conj {:wlr-refernece (cpp/box toplevel)
+      (println "pre toplevels" @(:toplevels @state/wm))
+      (swap! (:toplevels @state/wm) conj {:wlr-reference (cpp/box toplevel)
                                           :scene-tree (cpp/box scene-tree)
-                                          :listeners listeners})
+                                          :listeners (cpp/box listeners)})
+      (println "post topleves" @(:toplevels @state/wm))
+      (println @state/wm)
       (let [o (output/get-focused)
             background (cpp/unbox (:* wlr_scene_tree) (:background o))
             node (.-node background)
             x (+ (.-x node) state/margin)
-            y (+ (.-y node) state/margin)
+            y (+ (.-y node) state/margin)]
 
-            ]
         (cpp/wlr_scene_node_set_position
-          (cpp/& toplevel-node) x y)))))
+         (cpp/& toplevel-node) x y)))))
