@@ -49,7 +49,7 @@
             (cpp/box cpp/jank_null))))
       (cpp/box cpp/jank_null))))
 
-(defn toplevel_at_cursor [c s x y]
+(defn toplevel-at-cursor [c s x y]
   (let [cursor (cpp/unbox (:* wlr_cursor) c)]
     (toplevel-at (.-x cursor) (.-y cursor) s x y)))
 
@@ -125,9 +125,9 @@
   (println "toplevel request resize"))
 
 (defn toplevel-destroy [l]
-  (cpp/cleanup_listeners (cpp/unbox (:* array_of_listeners) (:listeners (get-state l cpp/TOPLEVEL_DESTROY))))
+  (cpp/cleanup_listeners (cpp/unbox (:* array_of_listeners) (:listeners (get-state l 7))))
   (swap! (:toplevels @state/wm)
-         (fn [v] (vec (remove (partial listener-pred l cpp/TOPLEVEL_DESTROY) v)))))
+         (fn [v] (vec (remove (partial listener-pred l 7) v)))))
 
 (defn new-toplevel [t]
   (println "--- NEW toplevel")
