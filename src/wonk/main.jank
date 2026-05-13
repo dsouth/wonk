@@ -99,7 +99,7 @@
   (cpp/wlr_backend_destroy (cpp/unbox (:* cpp/wlr_backend) (:backend @state/wm)))
   (cpp/wl_display_destroy (cpp/unbox (:* cpp/wl_display) (:display @state/wm))))
 
-(defn -main [& args]
+(defn -main [& _]
 ;;  (callback)
   (println "running")
   (cpp/wlr_log_init cpp/WLR_DEBUG cpp/nullptr)

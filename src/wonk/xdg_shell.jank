@@ -125,6 +125,7 @@
   (println "toplevel request resize"))
 
 (defn toplevel-destroy [l]
+;; TODO go back to enums for getting listeners once fixed in jank
   (cpp/cleanup_listeners (cpp/unbox (:* array_of_listeners) (:listeners (get-state l 7))))
   (swap! (:toplevels @state/wm)
          (fn [v] (vec (remove (partial listener-pred l 7) v)))))

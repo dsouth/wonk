@@ -21,15 +21,13 @@
 (defn get-focused []
   (println "get focused output")
   (let [outputs @(:outputs @state/wm)]
-    (let [res (loop [o (first outputs)
-                     r (rest outputs)]
-                (if (nil? o)
-                  nil
-                  (if (:focused o)
-                    o
-                    (recur (first r) (rest r)))))]
-      (println "focused output is" res)
-      res)))
+    (loop [o (first outputs)
+           r (rest outputs)]
+      (if (nil? o)
+        nil
+        (if (:focused o)
+          o
+          (recur (first r) (rest r)))))))
 
 (defn get-primary []
   ;; TODO deal with atom here somehow?!? or
