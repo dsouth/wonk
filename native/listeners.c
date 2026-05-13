@@ -8,6 +8,7 @@
 #include <wlr/util/log.h>
 #include <wlr/types/wlr_cursor.h>
 #include <wlr/types/wlr_keyboard.h>
+#include <wlr/types/wlr_scene.h>
 #include <wlr/types/wlr_xdg_shell.h>
 
 #include "../include/callbacks.h"
@@ -373,4 +374,21 @@ struct wl_listener *get_listener_pointer_at_index(struct wl_listener **wl,
                                                   int index) {
   printf("get_listener_pointer at index called with index %d\n", index);
   return wl[index];
+}
+
+struct wlr_scene_rect* get_background_rect(struct wlr_scene_tree *background) {
+  struct wlr_scene_node *node;
+  node = wl_container_of(background->children.next, node, link);
+  struct wlr_scene_rect *rect = wlr_scene_rect_from_node(node);
+  return rect;
+}
+
+// colors are memcpy by wlroots, so it's OK to reuse the same array
+// for every color (assuming single treaded...)
+float * get_color_array(float r, float g, float b, float a) {
+  color[0] = r;
+  color[1] = g;
+  color[2] = b;
+  color[3] = a;
+  return color;
 }

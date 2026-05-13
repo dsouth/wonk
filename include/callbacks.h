@@ -19,6 +19,8 @@ enum {
   TOPLEVEL_COUNT
 };
 
+float color[4];
+
 struct array_of_listeners {
   int length;
   struct wl_listener **the_listeners;
@@ -41,6 +43,9 @@ bool is_listener_in_listeners(struct wl_listener *target,
                               struct wl_listener **listeners, int count);
 struct wlr_output_layout_output *
 output_get_primary_output_layout(struct wlr_output_layout *);
+struct wlr_scene_rect* get_background_rect(struct wlr_scene_tree *);
+float * get_color_array(float, float, float, float);
+
 #ifdef __cplusplus
 }
 #endif

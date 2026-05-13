@@ -5,6 +5,14 @@
             "callbacks.h"
             "time.h"))
 
+(defn output-pred [o m]
+  (cpp/== (cpp/unbox (:* wlr_output) o)
+          (cpp/unbox (:* wlr_output) (:wlr-reference m))))
+
+(defn get-state [o]
+  (let [p (partial output-pred o)]
+    (first (filter p @(:outputs @state/wm)))))
+
 (defn focus [output]
   (println "focus output called")
   (println output)
@@ -29,6 +37,10 @@
           o
           (recur (first r) (rest r)))))))
 
+;; TODO implement for more than one monitor
+(defn move-focus [dir])
+
+;; TODO probably not required...
 (defn get-primary []
   ;; TODO deal with atom here somehow?!? or
   ;; right a function that deals with flipping
@@ -99,9 +111,18 @@
              (update v (dec (count v)) assoc :listeners (cpp/box listeners))))))
 
 (defn frame-callback [o]
-  (let [output (cpp/unbox (:* wlr_output) o)
+  (let [output (get-state o)
+        rect (cpp/get_background_rect
+              (cpp/unbox (:* wlr_scene_tree) (:background output)))
+        color (if (:focused output)
+                (cpp/get_color_array 0.15 0.15 0.75 1.0)
+                (if (:input-mode @state/wm)
+                  (cpp/get_color_array 0.0 0.0 0.0 1.0)
+                  (cpp/get_color_array 0.05 0.85 0.05 1.0)))]
+    (cpp/wlr_scene_rect_set_color rect color))
+  (let [wlr-reference (cpp/unbox (:* wlr_output) o)
         scene (cpp/unbox (:* wlr_scene) (:scene @state/wm))
-        scene-output (cpp/wlr_scene_get_scene_output scene output)]
+        scene-output (cpp/wlr_scene_get_scene_output scene wlr-reference)]
     (cpp/wlr_scene_output_commit scene-output cpp/nullptr)
     (let [now (#cpp timespec)]
       (cpp/clock_gettime cpp/CLOCK_MONOTONIC (cpp/& now))
@@ -110,17 +131,11 @@
 (defn request-state-callback []
   (println "-- output request state called"))
 
-(defn output-pred [o m]
-  (cpp/== (cpp/unbox (:* wlr_output) o)
-          (cpp/unbox (:* wlr_output) (:wlr-reference m))))
-
 (defn destroy-callback [o]
-  (let [p (partial output-pred o)
-        ;; first find the output state to remove the listeners...
-        state (first (filter p @(:outputs @state/wm)))]
+  (let [state (get-state o)]
     (cpp/cleanup_listeners (cpp/unbox (:* array_of_listeners) (:listeners state)))
         ;; then remove the output state
     (swap! (:outputs @state/wm)
            ;; remove any map that contains the wlr_output reference
-           (fn [v] (vec (remove p v))))))
+           (fn [v] (vec (remove (partial output-pred o) v))))))
 
